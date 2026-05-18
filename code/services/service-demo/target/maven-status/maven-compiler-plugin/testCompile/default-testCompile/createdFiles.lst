@@ -1,0 +1,5 @@
+com\aistudio\service\controller\admin\AdminMailConfigControllerTest$RecordingMailConfigService.class
+com\aistudio\service\controller\admin\AdminEmailReportControllerTest.class
+com\aistudio\service\controller\admin\AdminMailConfigControllerTest.class
+com\aistudio\service\controller\admin\AdminEmailReportControllerTest$RecordingEmailReportService.class
+com\aistudio\service\controller\admin\AdminProjectControllerTest.class
