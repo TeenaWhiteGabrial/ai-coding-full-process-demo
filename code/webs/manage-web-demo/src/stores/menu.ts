@@ -28,11 +28,11 @@ function normalizeMenu(item: any): ConsoleMenu {
   }
 }
 
-export const useMenuStore = defineStore('console-menu', () => {
+export const useMenuStore = defineStore('menu', () => {
   const menus = ref<ConsoleMenu[]>([])
 
   async function fetchMenus() {
-    const res = await request.get('/menu/tree') as any
+    const res = await request.get('/common/menu/tree') as any
     menus.value = (res.data || []).map(normalizeMenu)
   }
 

@@ -1,583 +1,325 @@
 <template>
-  <div class="dashboard" v-loading="loading">
-    <div class="welcome-section">
-      <div class="welcome-content">
-        <h1 class="welcome-title">
-          <span class="greeting">{{ greeting }}</span>，{{ displayName }}
-        </h1>
-        <p class="welcome-subtitle">今天是 {{ todayDate }}，开始你的工作吧</p>
+  <div class="dashboard-page">
+    <section class="hero">
+      <div>
+        <span class="section-kicker">Template Overview</span>
+        <h1>基础能力已经就位</h1>
+        <p>你现在可以直接测试文件上传、站点配置读取和账户配置修改。</p>
       </div>
-      <div class="welcome-actions">
-        <el-button type="primary" size="large" class="create-btn" @click="$router.push('/console/task')">
-          <el-icon><Plus /></el-icon>
-          <span>录入任务</span>
-        </el-button>
-      </div>
-    </div>
+      <el-button type="primary" size="large" class="hero-action" @click="triggerUpload">
+        上传测试文件
+      </el-button>
+      <input ref="fileInput" type="file" style="display: none" @change="handleFileChange">
+    </section>
 
-    <div class="stats-grid">
-      <el-card class="stat-card skill-card">
-        <div class="stat-content">
-          <div class="stat-icon skill-icon">
-            <el-icon :size="28"><Box /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.skillCount }}</div>
-            <div class="stat-label">我的 Skills</div>
-            <div class="stat-trend">
-              <el-icon><TrendCharts /></el-icon>
-              <span>本月新增 {{ stats.skillMonthCount }}</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
+    <section class="stats-grid">
+      <article class="mini-stat">
+        <span class="stat-label">已保留能力</span>
+        <strong>4 项</strong>
+        <small>登录、菜单、上传、站点信息</small>
+      </article>
+      <article class="mini-stat">
+        <span class="stat-label">API 基础路径</span>
+        <strong>/ai-studio/v1</strong>
+        <small>前后端已经对齐</small>
+      </article>
+      <article class="mini-stat">
+        <span class="stat-label">数据库</span>
+        <strong>template_demo_v2</strong>
+        <small>使用独立 migration 初始化</small>
+      </article>
+    </section>
 
-      <el-card class="stat-card task-card">
-        <div class="stat-content">
-          <div class="stat-icon task-icon">
-            <el-icon :size="28"><Calendar /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.taskCount }}</div>
-            <div class="stat-label">今日任务</div>
-            <div class="stat-trend">
-              <el-icon><Clock /></el-icon>
-              <span>{{ stats.todayTaskHours }}h</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card project-card">
-        <div class="stat-content">
-          <div class="stat-icon project-icon">
-            <el-icon :size="28"><Folder /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.projectCount }}</div>
-            <div class="stat-label">进行中项目</div>
-            <div class="stat-trend">
-              <el-icon><Document /></el-icon>
-              <span>来自项目管理</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card hours-card">
-        <div class="stat-content">
-          <div class="stat-icon hours-icon">
-            <el-icon :size="28"><DataLine /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.monthTaskHours }}h</div>
-            <div class="stat-label">本月任务工时</div>
-            <div class="stat-trend">
-              <el-icon><CircleCheck /></el-icon>
-              <span>任务管理汇总</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-    </div>
-
-    <div class="content-grid">
-      <el-card class="tasks-card">
+    <section class="content-grid">
+      <el-card class="upload-panel">
         <template #header>
-          <div class="card-header">
-            <div class="header-left">
-              <el-icon><List /></el-icon>
-              <span>最近任务</span>
-            </div>
-            <el-button link type="primary" size="small" @click="$router.push('/console/task')">
-              查看全部
-              <el-icon><ArrowRight /></el-icon>
-            </el-button>
-          </div>
-        </template>
-        <div class="tasks-table-wrapper">
-          <el-table v-if="recentTasks.length > 0" :data="recentTasks" style="width: 100%" :show-header="false" class="tasks-table">
-            <el-table-column width="56">
-              <template #default="{ row }">
-                <div class="task-icon-wrap" :class="{ completed: row.status === 'COMPLETED' }">
-                  <el-icon><Check v-if="row.status === 'COMPLETED'" /><Loading v-else /></el-icon>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column min-width="220">
-              <template #default="{ row }">
-                <div class="task-main">
-                  <span class="task-title">{{ row.content }}</span>
-                  <span class="task-sub">{{ row.taskDate }} · {{ row.projectName || '未关联项目' }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column width="80" align="right">
-              <template #default="{ row }">
-                <span class="task-hours">{{ row.hours }}h</span>
-              </template>
-            </el-table-column>
-            <el-table-column width="90" align="right">
-              <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">
-                  {{ getStatusText(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-empty v-else description="暂无任务" :image-size="80" />
-        </div>
-      </el-card>
-
-      <el-card class="quick-access-card">
-        <template #header>
-          <div class="card-header">
-            <div class="header-left">
-              <el-icon><Compass /></el-icon>
-              <span>快捷入口</span>
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Upload</span>
+              <h3>文件上传测试</h3>
             </div>
           </div>
         </template>
-        <div class="quick-actions">
-          <div class="action-item" @click="$router.push('/console/task')">
-            <div class="action-icon task-action-icon">
-              <el-icon><Edit /></el-icon>
-            </div>
-            <span>录入任务</span>
+        <p class="panel-copy">点击按钮上传任意文件，结果会展示返回的文件 URL 和对象键。</p>
+        <el-button type="primary" @click="triggerUpload">选择文件</el-button>
+        <div v-if="uploading" class="upload-state">正在上传，请稍候…</div>
+        <div v-if="lastUpload" class="upload-result">
+          <div class="result-row">
+            <span>文件名</span>
+            <strong>{{ lastUpload.fileName }}</strong>
           </div>
-          <div class="action-item" @click="$router.push('/console/stats')">
-            <div class="action-icon stats-action-icon">
-              <el-icon><DataLine /></el-icon>
-            </div>
-            <span>产出统计</span>
+          <div class="result-row">
+            <span>对象键</span>
+            <code>{{ lastUpload.ossKey }}</code>
           </div>
-          <div class="action-item" @click="$router.push('/console/resource')">
-            <div class="action-icon resource-action-icon">
-              <el-icon><Upload /></el-icon>
-            </div>
-            <span>上传资源</span>
-          </div>
-          <div class="action-item" @click="$router.push('/console/task')">
-            <div class="action-icon project-action-icon">
-              <el-icon><Folder /></el-icon>
-            </div>
-            <span>任务清单</span>
+          <div class="result-row">
+            <span>访问地址</span>
+            <a :href="lastUpload.ossUrl" target="_blank" rel="noreferrer">{{ lastUpload.ossUrl }}</a>
           </div>
         </div>
       </el-card>
-    </div>
+
+      <el-card class="site-panel">
+        <template #header>
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Site Config</span>
+              <h3>站点配置</h3>
+            </div>
+          </div>
+        </template>
+        <div class="info-list">
+          <div class="info-item">
+            <span>站点名称</span>
+            <strong>{{ siteInfo.siteName || '-' }}</strong>
+          </div>
+          <div class="info-item">
+            <span>站点描述</span>
+            <strong>{{ siteInfo.siteDescription || '-' }}</strong>
+          </div>
+          <div class="info-item">
+            <span>Logo 地址</span>
+            <code>{{ siteInfo.logoUrl || '-' }}</code>
+          </div>
+          <div class="info-item">
+            <span>Footer</span>
+            <strong>{{ siteInfo.footerText || '-' }}</strong>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card class="api-panel">
+        <template #header>
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">API Endpoints</span>
+              <h3>可直接联调的接口</h3>
+            </div>
+          </div>
+        </template>
+        <ul class="endpoint-list">
+          <li><code>POST /common/auth/token</code></li>
+          <li><code>GET /common/auth/user-info</code></li>
+          <li><code>POST /common/oss/upload</code></li>
+          <li><code>GET /common/site/config</code></li>
+          <li><code>GET /common/menu/tree</code></li>
+        </ul>
+      </el-card>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import {
-  ArrowRight,
-  Box,
-  Calendar,
-  Check,
-  CircleCheck,
-  Clock,
-  Compass,
-  DataLine,
-  Document,
-  Edit,
-  Folder,
-  List,
-  Loading,
-  Plus,
-  TrendCharts,
-  Upload,
-} from '@element-plus/icons-vue'
-import { dashboardApi } from '@/api'
+import { getSiteConfig } from '@/api/site'
+import { uploadApi } from '@/api/upload'
 
-interface DashboardTask {
-  id: number
-  projectId?: number
-  projectName?: string
-  taskDate: string
-  content: string
-  hours: number
-  status: string
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+const siteInfo = ref({
+  siteName: '',
+  siteDescription: '',
+  logoUrl: '',
+  footerText: '',
+})
+const lastUpload = ref<null | {
+  fileName: string
+  ossKey: string
+  ossUrl: string
+}>(null)
+
+onMounted(async () => {
+  const config = await getSiteConfig()
+  siteInfo.value = config
+})
+
+function triggerUpload() {
+  fileInput.value?.click()
 }
 
-const loading = ref(false)
-const recentTasks = ref<DashboardTask[]>([])
-
-const stats = reactive({
-  skillCount: 0,
-  skillMonthCount: 0,
-  taskCount: 0,
-  todayTaskHours: 0,
-  projectCount: 0,
-  monthTaskHours: 0,
-})
-
-const displayName = computed(() => {
+async function handleFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploading.value = true
   try {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-    return userInfo.realName || userInfo.real_name || userInfo.username || '开发者'
-  } catch {
-    return '开发者'
-  }
-})
-
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 12) return '早上好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
-})
-
-const todayDate = computed(() => {
-  const now = new Date()
-  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
-  return now.toLocaleDateString('zh-CN', options)
-})
-
-const loadDashboard = async () => {
-  loading.value = true
-  try {
-    const res: any = await dashboardApi.overview()
-    const data = res?.data || {}
-    stats.skillCount = Number(data.skillCount || 0)
-    stats.skillMonthCount = Number(data.skillMonthCount || 0)
-    stats.taskCount = Number(data.taskCount || 0)
-    stats.todayTaskHours = Number(data.todayTaskHours || 0)
-    stats.projectCount = Number(data.projectCount || 0)
-    stats.monthTaskHours = Number(data.monthTaskHours || 0)
-    recentTasks.value = data.recentTasks || []
-  } catch (error) {
-    console.error('加载 Dashboard 数据失败:', error)
-    ElMessage.error('加载 Dashboard 数据失败')
+    const res = await uploadApi.upload(file) as any
+    if (res.code === 200) {
+      lastUpload.value = res.data
+      ElMessage.success('上传成功')
+    }
   } finally {
-    loading.value = false
+    uploading.value = false
+    input.value = ''
   }
 }
-
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    PENDING: '待处理',
-    COMPLETED: '已完成',
-    CANCELLED: '已取消',
-  }
-  return map[status] || '未知'
-}
-
-const getStatusType = (status: string) => {
-  const map: Record<string, 'warning' | 'success' | 'info'> = {
-    PENDING: 'warning',
-    COMPLETED: 'success',
-    CANCELLED: 'info',
-  }
-  return map[status] || 'info'
-}
-
-onMounted(() => {
-  loadDashboard()
-})
 </script>
 
 <style scoped>
-.dashboard {
-  padding: 0;
+.dashboard-page {
+  display: grid;
+  gap: 18px;
 }
 
-.welcome-section {
+.hero {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: center;
-  padding: var(--ai-space-6) 0;
-  margin-bottom: var(--ai-space-6);
-  border-bottom: 1px solid hsl(var(--border));
+  gap: 18px;
+  padding: 30px 32px;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, hsl(var(--card) / 0.92), hsl(var(--card) / 0.72)),
+    hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 20px 50px hsl(var(--shadow-soft));
 }
 
-.welcome-content {
-  flex: 1;
+.section-kicker,
+.panel-kicker {
+  display: inline-block;
+  color: hsl(var(--primary));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.welcome-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin: 0 0 var(--ai-space-2) 0;
-  line-height: 1.3;
+.hero h1,
+.panel-head h3 {
+  margin: 10px 0 8px;
 }
 
-.greeting {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(220 70% 65%));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.welcome-subtitle {
-  font-size: 14px;
-  color: hsl(var(--muted-foreground));
+.hero p,
+.panel-copy {
   margin: 0;
-  line-height: 1.5;
+  max-width: 40rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.75;
 }
 
-.welcome-actions {
-  flex-shrink: 0;
-}
-
-.create-btn {
-  height: 44px;
-  padding: 0 var(--ai-space-6);
-  font-weight: 500;
-  border-radius: 8px;
+.hero-action {
+  border-radius: 16px;
+  font-weight: 700;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--ai-space-4);
-  margin-bottom: var(--ai-space-6);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.stat-card,
-.tasks-card,
-.quick-access-card {
-  border-radius: 8px;
+.mini-stat {
+  display: grid;
+  gap: 6px;
+  padding: 22px 24px;
   border: 1px solid hsl(var(--border));
-  overflow: hidden;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: var(--ai-space-4);
-  padding: var(--ai-space-5);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.skill-icon {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(220 70% 50%));
-}
-
-.task-icon {
-  background: linear-gradient(135deg, hsl(280 65% 60%), hsl(280 65% 50%));
-}
-
-.project-icon {
-  background: linear-gradient(135deg, hsl(190 80% 55%), hsl(200 80% 45%));
-}
-
-.hours-icon {
-  background: linear-gradient(135deg, hsl(142 76% 46%), hsl(142 76% 38%));
-}
-
-.stat-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.stat-value {
-  font-size: 30px;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  line-height: 1.2;
+  border-radius: 24px;
+  background: hsl(var(--panel));
 }
 
 .stat-label {
-  font-size: 14px;
   color: hsl(var(--muted-foreground));
-  margin-top: var(--ai-space-1);
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
-.stat-trend {
-  display: flex;
-  align-items: center;
-  gap: var(--ai-space-1);
-  margin-top: var(--ai-space-2);
-  font-size: 12px;
+.mini-stat strong {
+  font-size: 24px;
+}
+
+.mini-stat small {
   color: hsl(var(--muted-foreground));
 }
 
 .content-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--ai-space-4);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 18px;
 }
 
-.card-header {
+.api-panel {
+  grid-column: 1 / -1;
+}
+
+.panel-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: var(--ai-space-4) var(--ai-space-5);
-  border-bottom: 1px solid hsl(var(--border));
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--ai-space-2);
-  font-weight: 600;
-  font-size: 16px;
-  color: hsl(var(--foreground));
-}
-
-.header-left .el-icon {
+.upload-state {
+  margin-top: 16px;
   color: hsl(var(--primary));
-  font-size: 18px;
+  font-weight: 700;
 }
 
-.tasks-table-wrapper {
-  min-height: 220px;
+.upload-result,
+.info-list,
+.endpoint-list {
+  margin-top: 18px;
 }
 
-.tasks-table :deep(.el-table__row:hover) {
-  background: hsl(var(--secondary)) !important;
-}
-
-.task-icon-wrap {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: hsl(38 92% 50%);
-  background: hsl(38 92% 50% / 0.1);
-}
-
-.task-icon-wrap.completed {
-  color: hsl(142 76% 36%);
-  background: hsl(142 76% 36% / 0.1);
-}
-
-.task-main {
-  min-width: 0;
+.upload-result,
+.info-list {
   display: grid;
-  gap: 4px;
+  gap: 14px;
 }
 
-.task-title {
-  color: hsl(var(--foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.result-row,
+.info-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  background: hsl(var(--panel-strong));
+  border: 1px solid hsl(var(--border));
+  border-radius: 18px;
 }
 
-.task-sub,
-.task-hours {
-  font-size: 12px;
+.result-row span,
+.info-item span {
   color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.task-hours {
-  font-weight: 600;
+.result-row a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  word-break: break-all;
 }
 
-.quick-actions {
+.endpoint-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--ai-space-3);
-  padding: var(--ai-space-4);
+  gap: 12px;
+  padding-left: 18px;
 }
 
-.action-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--ai-space-2);
-  padding: var(--ai-space-4) var(--ai-space-2);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all var(--ai-transition-base);
-  background: hsl(var(--muted));
-  border: 1px solid transparent;
-}
-
-.action-item:hover {
-  background: hsl(var(--secondary));
-  transform: translateY(-2px);
-}
-
-.action-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 20px;
-}
-
-.task-action-icon {
-  background: linear-gradient(135deg, hsl(220 70% 55%), hsl(220 70% 45%));
-}
-
-.stats-action-icon {
-  background: linear-gradient(135deg, hsl(142 76% 46%), hsl(142 76% 38%));
-}
-
-.resource-action-icon {
-  background: linear-gradient(135deg, hsl(38 92% 50%), hsl(38 92% 40%));
-}
-
-.project-action-icon {
-  background: linear-gradient(135deg, hsl(190 80% 55%), hsl(200 80% 45%));
-}
-
-.action-item span {
-  font-size: 13px;
-  font-weight: 500;
+.endpoint-list li {
   color: hsl(var(--foreground));
 }
 
-:deep(.el-card__header) {
-  padding: 0;
-  border: none;
+.endpoint-list code,
+.result-row code,
+.info-item code {
+  font-family: "Cascadia Code", Consolas, monospace;
+  word-break: break-all;
 }
 
-:deep(.el-card__body) {
-  padding: 0;
-}
-
-:deep(.el-empty) {
-  padding: var(--ai-space-8) 0;
-}
-
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
+@media (max-width: 960px) {
+  .stats-grid,
   .content-grid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 768px) {
-  .welcome-section {
+  .hero {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--ai-space-4);
-  }
-
-  .welcome-actions,
-  .create-btn {
-    width: 100%;
-  }
-
-  .stats-grid,
-  .quick-actions {
-    grid-template-columns: 1fr;
   }
 }
 </style>

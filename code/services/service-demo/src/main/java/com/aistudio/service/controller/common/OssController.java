@@ -17,9 +17,9 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-@Tag(name = "OSS File Storage")
+@Tag(name = "OSS")
 @RestController
-@RequestMapping("/oss")
+@RequestMapping("/common/oss")
 @RequiredArgsConstructor
 public class OssController {
 
@@ -27,8 +27,7 @@ public class OssController {
 
     @Operation(summary = "Get upload token")
     @GetMapping("/token")
-    public Result<Map<String, String>> getUpToken(
-            @RequestParam(required = false, defaultValue = "") String keyPrefix) {
+    public Result<Map<String, String>> token(@RequestParam(required = false, defaultValue = "") String keyPrefix) {
         String token = ossService.generateUpToken(keyPrefix);
         return Result.success(Map.of(
                 "token", token,
@@ -41,33 +40,27 @@ public class OssController {
     @PostMapping("/upload")
     public Result<UploadResultVO> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false, defaultValue = "portal/images") String keyPrefix) {
+            @RequestParam(required = false, defaultValue = "uploads") String keyPrefix) {
         if (file == null || file.isEmpty()) {
-            return Result.error(400, "上传文件不能为空");
+            return Result.error(400, "file is empty");
         }
 
         try {
-            String originalFilename = file.getOriginalFilename();
-            String suffix = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
+            String name = file.getOriginalFilename() == null ? "file" : file.getOriginalFilename();
+            String suffix = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
             String normalizedPrefix = normalizePrefix(keyPrefix);
-            String randomName = System.currentTimeMillis() + "_" + ThreadLocalRandom.current().nextInt(10000) + suffix;
-            String key = normalizedPrefix + "/" + randomName;
-
+            String key = normalizedPrefix + "/" + System.currentTimeMillis() + "_" +
+                    ThreadLocalRandom.current().nextInt(10000) + suffix;
             String ossKey = ossService.uploadFile(key, file.getInputStream(), file.getSize(), file.getContentType());
             String ossUrl = ossService.getPublicUrl(ossKey);
-
             UploadResultVO vo = new UploadResultVO();
-            vo.setFileName(originalFilename);
+            vo.setFileName(name);
             vo.setOssKey(ossKey);
             vo.setOssUrl(ossUrl);
             vo.setFileSize(file.getSize());
             return Result.success(vo);
-        } catch (IOException e) {
-            return Result.error(500, "上传失败: " + e.getMessage());
+        } catch (IOException exception) {
+            return Result.error(500, exception.getMessage());
         }
     }
 
@@ -79,10 +72,7 @@ public class OssController {
         while (prefix.endsWith("/")) {
             prefix = prefix.substring(0, prefix.length() - 1);
         }
-        if (prefix.isEmpty()) {
-            return "portal/images";
-        }
-        return prefix;
+        return prefix.isEmpty() ? "uploads" : prefix;
     }
 
     @Data

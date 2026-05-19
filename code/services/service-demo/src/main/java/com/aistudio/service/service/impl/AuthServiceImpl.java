@@ -9,24 +9,16 @@ import com.aistudio.service.dto.response.TokenResponse;
 import com.aistudio.service.dto.response.UserInfoResponse;
 import com.aistudio.service.entity.SysRole;
 import com.aistudio.service.entity.SysUser;
-import com.aistudio.service.entity.SysDepartment;
-import com.aistudio.service.entity.SysTeam;
 import com.aistudio.service.mapper.SysRoleMapper;
 import com.aistudio.service.mapper.SysUserMapper;
-import com.aistudio.service.mapper.SysDepartmentMapper;
-import com.aistudio.service.mapper.SysTeamMapper;
 import com.aistudio.service.service.AuthService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Optional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -36,103 +28,71 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RsaConfig rsaConfig;
-    private final SysDepartmentMapper departmentMapper;
-    private final SysTeamMapper teamMapper;
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        // RSA 解密前端传来的密文，得到明文密码
         String plainPassword = rsaConfig.decrypt(request.getPassword());
-        log.info("[登录调试] 解密后明文密码: '{}'", plainPassword);
-
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
-        if (user == null) {
-            log.warn("[登录调试] 用户不存在: {}", request.getUsername());
-            throw new BusinessException(401, "用户名或密码错误");
+        if (user == null || !matchesPassword(plainPassword, user.getPassword())) {
+            throw new BusinessException(401, "username or password is incorrect");
         }
-        log.info("[登录调试] 数据库密码hash: '{}'", user.getPassword());
-        boolean matches = passwordEncoder.matches(plainPassword, user.getPassword());
-        log.info("[登录调试] BCrypt匹配结果: {}", matches);
-        if (!matches) {
-            throw new BusinessException(401, "用户名或密码错误");
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(403, "user is disabled");
         }
-        if (user.getStatus() == 0) {
-            throw new BusinessException(403, "用户已被禁用");
-        }
-        List<SysRole> roles = roleMapper.selectByUserId(user.getId());
+
+        List<String> roles = roleMapper.selectByUserId(user.getId()).stream()
+                .map(SysRole::getRoleCode)
+                .toList();
+
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
         return LoginResponse.builder()
                 .token(token)
                 .userId(user.getId())
                 .username(user.getUsername())
-                .gitName(user.getGitName())
                 .realName(user.getRealName())
-                .roles(roles.stream().map(SysRole::getRoleCode).collect(Collectors.toList()))
+                .roles(roles)
                 .build();
     }
 
     @Override
     public TokenResponse getToken(LoginRequest request) {
-        // RSA 解密前端传来的密文，得到明文密码
         String plainPassword = rsaConfig.decrypt(request.getPassword());
-        log.info("[登录调试] 解密后明文密码: '{}'", plainPassword);
-
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
-        if (user == null) {
-            log.warn("[登录调试] 用户不存在: {}", request.getUsername());
-            throw new BusinessException(401, "用户名或密码错误");
+        if (user == null || !matchesPassword(plainPassword, user.getPassword())) {
+            throw new BusinessException(401, "username or password is incorrect");
         }
-        log.info("[登录调试] 数据库密码hash: '{}'", user.getPassword());
-        boolean matches = passwordEncoder.matches(plainPassword, user.getPassword());
-        log.info("[登录调试] BCrypt匹配结果: {}", matches);
-        if (!matches) {
-            throw new BusinessException(401, "用户名或密码错误");
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(403, "user is disabled");
         }
-        if (user.getStatus() == 0) {
-            throw new BusinessException(403, "用户已被禁用");
-        }
-
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
-        return TokenResponse.builder().token(token).build();
+        return TokenResponse.builder()
+                .token(jwtTokenProvider.generateToken(user.getId(), user.getUsername()))
+                .build();
     }
 
     @Override
     public UserInfoResponse getUserInfo(Long userId) {
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException(404, "用户不存在");
+            throw new BusinessException(404, "user not found");
         }
-
-        List<SysRole> roles = roleMapper.selectByUserId(userId);
-
-        // 获取部门名称
-        String deptName = null;
-        if (user.getDeptId() != null) {
-            SysDepartment dept = departmentMapper.selectById(user.getDeptId());
-            deptName = dept != null ? dept.getDeptName() : null;
-        }
-
-        // 获取团队名称
-        String teamName = null;
-        if (user.getTeamId() != null) {
-            SysTeam team = teamMapper.selectById(user.getTeamId());
-            teamName = team != null ? team.getTeamName() : null;
-        }
-
+        List<String> roles = roleMapper.selectByUserId(userId).stream()
+                .map(SysRole::getRoleCode)
+                .toList();
         return UserInfoResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
-                .gitName(user.getGitName())
                 .realName(user.getRealName())
-                .roles(roles.stream().map(SysRole::getRoleCode).collect(Collectors.toList()))
+                .roles(roles)
                 .avatar(user.getAvatar())
-                .deptId(user.getDeptId())
-                .deptName(deptName)
-                .teamId(user.getTeamId())
-                .teamName(teamName)
-                .email(user.getEmail() != null ? user.getEmail() : "")
+                .email(user.getEmail())
                 .build();
+    }
+
+    private boolean matchesPassword(String rawPassword, String storedPassword) {
+        return rawPassword != null
+                && storedPassword != null
+                && (storedPassword.equals(rawPassword) || passwordEncoder.matches(rawPassword, storedPassword));
     }
 }

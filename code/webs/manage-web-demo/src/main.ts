@@ -11,9 +11,8 @@ import { useThemeStore } from './stores/theme'
 const app = createApp(App)
 const pinia = createPinia()
 
-// 注册所有 Element Plus 图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
+for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(name, component)
 }
 
 app.use(pinia)
@@ -21,6 +20,4 @@ app.use(router)
 app.use(ElementPlus, { locale: zhCn })
 app.mount('#app')
 
-// 初始化主题
-const themeStore = useThemeStore()
-themeStore.initTheme()
+useThemeStore().initTheme()

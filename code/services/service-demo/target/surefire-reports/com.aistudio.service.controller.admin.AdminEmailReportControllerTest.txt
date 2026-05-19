@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.aistudio.service.controller.admin.AdminEmailReportControllerTest
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.715 s -- in com.aistudio.service.controller.admin.AdminEmailReportControllerTest

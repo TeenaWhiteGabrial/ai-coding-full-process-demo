@@ -10,15 +10,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Portal - 网站设置")
+@Tag(name = "Portal Site")
 @RestController
-@RequestMapping("/portal/site")
+@RequestMapping("/common/site")
 @RequiredArgsConstructor
 public class SiteConfigController {
 
     private final SiteConfigService siteConfigService;
 
-    @Operation(summary = "获取网站设置")
+    @Operation(summary = "Get site config")
     @GetMapping("/config")
     public Result<SiteConfigVO> config() {
         return Result.success(siteConfigService.getConfig());

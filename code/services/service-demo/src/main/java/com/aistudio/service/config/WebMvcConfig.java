@@ -14,7 +14,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        // 强制设置所有消息转换器使用 UTF-8 编码
         converters.forEach(converter -> {
             if (converter instanceof StringHttpMessageConverter stringConverter) {
                 stringConverter.setDefaultCharset(StandardCharsets.UTF_8);

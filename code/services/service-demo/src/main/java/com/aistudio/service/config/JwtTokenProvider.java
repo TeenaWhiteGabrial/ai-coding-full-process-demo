@@ -11,9 +11,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-/**
- * JWT 工具类
- */
 @Slf4j
 @Component
 public class JwtTokenProvider {
@@ -30,12 +27,12 @@ public class JwtTokenProvider {
 
     public String generateToken(Long userId, String username) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
+        Date expiresAt = new Date(now.getTime() + expiration);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
                 .issuedAt(now)
-                .expiration(expiryDate)
+                .expiration(expiresAt)
                 .signWith(getKey())
                 .compact();
     }
@@ -56,8 +53,8 @@ public class JwtTokenProvider {
         try {
             parseToken(token);
             return true;
-        } catch (Exception e) {
-            log.debug("Token 校验失败: {}", e.getMessage());
+        } catch (Exception exception) {
+            log.debug("Token validation failed: {}", exception.getMessage());
             return false;
         }
     }

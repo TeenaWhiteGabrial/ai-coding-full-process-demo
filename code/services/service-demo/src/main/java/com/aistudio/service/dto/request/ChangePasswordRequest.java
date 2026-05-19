@@ -1,17 +1,19 @@
 package com.aistudio.service.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "旧密码不能为空")
-    @JsonProperty("oldPassword")
+    @NotBlank(message = "old password is required")
+    @JsonAlias("oldPassword")
     private String oldPassword;
 
-    @NotBlank(message = "新密码不能为空")
-    @JsonProperty("newPassword")
+    @NotBlank(message = "new password is required")
+    @Size(min = 6, message = "new password must be at least 6 characters")
+    @JsonAlias("newPassword")
     private String newPassword;
 }

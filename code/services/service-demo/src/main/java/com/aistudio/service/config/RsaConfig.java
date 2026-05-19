@@ -7,9 +7,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.Cipher;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 @Slf4j
@@ -26,21 +24,18 @@ public class RsaConfig {
         return publicKeyBase64;
     }
 
-    /**
-     * 用私钥解密前端传来的密文（Base64编码）
-     */
     public String decrypt(String cipherTextBase64) {
         try {
-            byte[] keyBytes = Base64.getDecoder().decode(privateKeyBase64);
+            byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyBase64);
             PrivateKey privateKey = KeyFactory.getInstance("RSA")
-                    .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
+                    .generatePrivate(new PKCS8EncodedKeySpec(privateKeyBytes));
             Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
-            byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(cipherTextBase64));
-            return new String(decrypted);
-        } catch (Exception e) {
-            log.error("RSA解密失败", e);
-            throw new RuntimeException("密码解密失败");
+            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(cipherTextBase64));
+            return new String(decryptedBytes);
+        } catch (Exception exception) {
+            log.error("RSA decrypt failed", exception);
+            throw new IllegalStateException("password decrypt failed");
         }
     }
 }

@@ -8,10 +8,10 @@ import java.util.List;
 @Data
 @Builder
 public class LoginResponse {
+
     private String token;
     private Long userId;
     private String username;
-    private String gitName;
     private String realName;
     private List<String> roles;
 }

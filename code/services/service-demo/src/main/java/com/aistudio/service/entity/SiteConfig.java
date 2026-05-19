@@ -20,8 +20,6 @@ public class SiteConfig {
     private String footerText;
     private String footerCopyright;
     private String footerRecord;
-    private String footerLinks;
-    private String contacts;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

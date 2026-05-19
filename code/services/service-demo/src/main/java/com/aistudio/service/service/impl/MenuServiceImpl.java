@@ -9,7 +9,6 @@ import com.aistudio.service.entity.SysRoleMenu;
 import com.aistudio.service.mapper.SysMenuMapper;
 import com.aistudio.service.mapper.SysRoleMenuMapper;
 import com.aistudio.service.service.MenuService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -34,45 +33,43 @@ public class MenuServiceImpl implements MenuService {
     @Override
     public List<MenuTreeVO> getMenuTree(Long userId) {
         List<SysMenu> menus = menuMapper.selectByUserId(userId);
-        List<MenuTreeVO> vos = dedupeMenus(menus).stream().map(m -> {
+        List<MenuTreeVO> voList = new ArrayList<>();
+        for (SysMenu menu : menus) {
             MenuTreeVO vo = new MenuTreeVO();
-            BeanUtils.copyProperties(m, vo);
-            return vo;
-        }).collect(Collectors.toList());
-        return buildTree(vos, 0L);
+            BeanUtils.copyProperties(menu, vo);
+            voList.add(vo);
+        }
+        return buildTree(voList, 0L);
     }
 
     @Override
     public List<RoleMenuTreeVO> getRoleMenuTree(Long roleId) {
-        // 获取所有菜单
-        List<SysMenu> allMenus = menuMapper.selectList(new LambdaQueryWrapper<SysMenu>()
-                .eq(SysMenu::getAppCode, APP_CODE_CONSOLE)
-                .orderByAsc(SysMenu::getSort));
-        // 获取角色已分配的菜单ID
+        List<SysMenu> allMenus = menuMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
+                        .eq(SysMenu::getAppCode, APP_CODE_CONSOLE)
+                        .orderByAsc(SysMenu::getSort)
+                        .orderByAsc(SysMenu::getId));
         List<SysRoleMenu> roleMenus = roleMenuMapper.selectList(
-                new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
+                        .eq(SysRoleMenu::getRoleId, roleId));
         Set<Long> roleMenuIds = roleMenus.stream()
                 .map(SysRoleMenu::getMenuId)
                 .collect(Collectors.toSet());
 
-        // 构建带选中状态的菜单树
-        List<RoleMenuTreeVO> vos = allMenus.stream().map(m -> {
+        List<RoleMenuTreeVO> voList = allMenus.stream().map(menu -> {
             RoleMenuTreeVO vo = new RoleMenuTreeVO();
-            BeanUtils.copyProperties(m, vo);
-            vo.setChecked(roleMenuIds.contains(m.getId()));
+            BeanUtils.copyProperties(menu, vo);
+            vo.setChecked(roleMenuIds.contains(menu.getId()));
             return vo;
-        }).collect(Collectors.toList());
-
-        return buildRoleMenuTree(vos, 0L);
+        }).toList();
+        return buildRoleTree(voList, 0L);
     }
 
     @Override
     @Transactional
     public void updateRoleMenus(Long roleId, List<Long> menuIds) {
-        // 删除原有菜单关联
-        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>()
+        roleMenuMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
                 .eq(SysRoleMenu::getRoleId, roleId));
-        // 插入新的菜单关联
         for (Long menuId : menuIds) {
             SysRoleMenu roleMenu = new SysRoleMenu();
             roleMenu.setRoleId(roleId);
@@ -83,16 +80,17 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     public List<SysMenu> listAllMenus() {
-        return menuMapper.selectList(new LambdaQueryWrapper<SysMenu>()
+        return menuMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
                 .eq(SysMenu::getAppCode, APP_CODE_CONSOLE)
-                .orderByAsc(SysMenu::getSort));
+                .orderByAsc(SysMenu::getSort)
+                .orderByAsc(SysMenu::getId));
     }
 
     @Override
     public SysMenu getMenuById(Long id) {
         SysMenu menu = menuMapper.selectById(id);
         if (menu == null) {
-            throw new BusinessException(404, "菜单不存在");
+            throw new BusinessException(404, "menu not found");
         }
         return menu;
     }
@@ -101,6 +99,9 @@ public class MenuServiceImpl implements MenuService {
     public Long createMenu(MenuRequest request) {
         SysMenu menu = new SysMenu();
         BeanUtils.copyProperties(request, menu);
+        menu.setParentId(request.getParentId() == null ? 0L : request.getParentId());
+        menu.setSort(request.getSort() == null ? 0 : request.getSort());
+        menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
         menuMapper.insert(menu);
         return menu.getId();
@@ -108,12 +109,12 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     public void updateMenu(Long id, MenuRequest request) {
-        SysMenu menu = menuMapper.selectById(id);
-        if (menu == null) {
-            throw new BusinessException(404, "菜单不存在");
-        }
+        SysMenu menu = getMenuById(id);
         BeanUtils.copyProperties(request, menu);
         menu.setId(id);
+        menu.setParentId(request.getParentId() == null ? 0L : request.getParentId());
+        menu.setSort(request.getSort() == null ? 0 : request.getSort());
+        menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
         menuMapper.updateById(menu);
     }
@@ -121,48 +122,38 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Transactional
     public void deleteMenu(Long id) {
-        // 检查是否有子菜单
-        long childCount = menuMapper.selectCount(new LambdaQueryWrapper<SysMenu>()
-                .eq(SysMenu::getParentId, id));
+        long childCount = menuMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
+                        .eq(SysMenu::getParentId, id));
         if (childCount > 0) {
-            throw new BusinessException(400, "请先删除子菜单");
+            throw new BusinessException(400, "please delete child menus first");
         }
-        // 检查是否被角色使用
-        long roleCount = roleMenuMapper.selectCount(new LambdaQueryWrapper<SysRoleMenu>()
-                .eq(SysRoleMenu::getMenuId, id));
+        long roleCount = roleMenuMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
+                        .eq(SysRoleMenu::getMenuId, id));
         if (roleCount > 0) {
-            throw new BusinessException(400, "该菜单已被角色使用，无法删除");
+            throw new BusinessException(400, "menu is assigned to roles and can not be deleted");
         }
         menuMapper.deleteById(id);
     }
 
-    private List<MenuTreeVO> buildTree(List<MenuTreeVO> all, Long parentId) {
+    private List<MenuTreeVO> buildTree(List<MenuTreeVO> items, Long parentId) {
         List<MenuTreeVO> result = new ArrayList<>();
-        for (MenuTreeVO vo : all) {
-            if (parentId.equals(vo.getParentId())) {
-                vo.setChildren(buildTree(all, vo.getId()));
-                result.add(vo);
+        for (MenuTreeVO item : items) {
+            if (parentId.equals(item.getParentId())) {
+                item.setChildren(buildTree(items, item.getId()));
+                result.add(item);
             }
         }
         return result;
     }
 
-    private List<SysMenu> dedupeMenus(List<SysMenu> menus) {
-        Map<String, SysMenu> map = new LinkedHashMap<>();
-        for (SysMenu menu : menus) {
-            String key = (menu.getAppCode() == null ? "" : menu.getAppCode()) + "|"
-                    + (menu.getPath() == null || menu.getPath().isBlank() ? String.valueOf(menu.getId()) : menu.getPath());
-            map.putIfAbsent(key, menu);
-        }
-        return new ArrayList<>(map.values());
-    }
-
-    private List<RoleMenuTreeVO> buildRoleMenuTree(List<RoleMenuTreeVO> all, Long parentId) {
+    private List<RoleMenuTreeVO> buildRoleTree(List<RoleMenuTreeVO> items, Long parentId) {
         List<RoleMenuTreeVO> result = new ArrayList<>();
-        for (RoleMenuTreeVO vo : all) {
-            if (parentId.equals(vo.getParentId())) {
-                vo.setChildren(buildRoleMenuTree(all, vo.getId()));
-                result.add(vo);
+        for (RoleMenuTreeVO item : items) {
+            if (parentId.equals(item.getParentId())) {
+                item.setChildren(buildRoleTree(items, item.getId()));
+                result.add(item);
             }
         }
         return result;

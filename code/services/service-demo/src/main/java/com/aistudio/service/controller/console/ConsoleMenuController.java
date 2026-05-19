@@ -13,19 +13,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Tag(name = "Console - 菜单")
+@Tag(name = "Console Menu")
 @RestController
-@RequestMapping("/console/menu")
+@RequestMapping("/common/menu")
 @RequiredArgsConstructor
 public class ConsoleMenuController {
 
     private final MenuService menuService;
     private final SecurityUtils securityUtils;
 
-    @Operation(summary = "获取当前用户 Console 菜单树")
+    @Operation(summary = "Get current user menu tree")
     @GetMapping("/tree")
     public Result<List<MenuTreeVO>> tree() {
-        Long userId = securityUtils.getCurrentUserId();
-        return Result.success(menuService.getMenuTree(userId));
+        return Result.success(menuService.getMenuTree(securityUtils.getCurrentUserId()));
     }
 }

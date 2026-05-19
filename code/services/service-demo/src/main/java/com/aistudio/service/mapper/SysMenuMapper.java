@@ -10,11 +10,14 @@ import java.util.List;
 @Mapper
 public interface SysMenuMapper extends BaseMapper<SysMenu> {
 
-    @Select("SELECT DISTINCT m.* FROM sys_menu m " +
-            "INNER JOIN sys_role_menu rm ON m.id = rm.menu_id " +
-            "INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id " +
-            "WHERE ur.user_id = #{userId} " +
-            "AND COALESCE(m.app_code, 'ADMIN') = 'CONSOLE' " +
-            "ORDER BY m.sort ASC")
+    @Select("""
+            SELECT DISTINCT m.*
+            FROM sys_menu m
+            INNER JOIN sys_role_menu rm ON m.id = rm.menu_id
+            INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id
+            WHERE ur.user_id = #{userId}
+              AND COALESCE(m.app_code, 'CONSOLE') = 'CONSOLE'
+            ORDER BY m.sort ASC, m.id ASC
+            """)
     List<SysMenu> selectByUserId(Long userId);
 }

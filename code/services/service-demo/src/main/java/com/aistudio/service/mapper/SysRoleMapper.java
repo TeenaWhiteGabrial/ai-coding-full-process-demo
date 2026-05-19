@@ -10,8 +10,12 @@ import java.util.List;
 @Mapper
 public interface SysRoleMapper extends BaseMapper<SysRole> {
 
-    @Select("SELECT r.* FROM sys_role r " +
-            "INNER JOIN sys_user_role ur ON r.id = ur.role_id " +
-            "WHERE ur.user_id = #{userId}")
+    @Select("""
+            SELECT r.*
+            FROM sys_role r
+            INNER JOIN sys_user_role ur ON r.id = ur.role_id
+            WHERE ur.user_id = #{userId}
+            ORDER BY r.id ASC
+            """)
     List<SysRole> selectByUserId(Long userId);
 }
