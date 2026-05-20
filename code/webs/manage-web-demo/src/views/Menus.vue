@@ -15,7 +15,14 @@
         <el-table-column prop="name" label="名称" min-width="180" />
         <el-table-column prop="path" label="路径" min-width="180" />
         <el-table-column prop="component" label="组件" min-width="160" />
-        <el-table-column prop="icon" label="图标" width="120" />
+        <el-table-column label="图标" width="160">
+          <template #default="{ row }">
+            <div class="icon-preview-cell">
+              <el-icon v-if="row.icon"><component :is="row.icon" /></el-icon>
+              <span>{{ row.icon || '-' }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="sort" label="排序" width="90" />
         <el-table-column label="隐藏" width="90">
           <template #default="{ row }">
@@ -66,7 +73,14 @@
               <el-input v-model="form.component" />
             </el-form-item>
             <el-form-item label="图标">
-              <el-input v-model="form.icon" />
+              <el-select v-model="form.icon" clearable style="width: 100%" placeholder="请选择图标">
+                <el-option v-for="icon in iconOptions" :key="icon" :label="icon" :value="icon">
+                  <div class="icon-option">
+                    <el-icon><component :is="icon" /></el-icon>
+                    <span>{{ icon }}</span>
+                  </div>
+                </el-option>
+              </el-select>
             </el-form-item>
             <el-form-item label="排序">
               <el-input-number v-model="form.sort" :min="0" />
@@ -97,6 +111,7 @@ interface MenuTreeItem extends MenuItem {
 const menus = ref<MenuTreeItem[]>([])
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const iconOptions = ['House', 'Setting', 'User', 'Key', 'Menu', 'Tools', 'Grid', 'Folder', 'Document', 'Monitor', 'DataAnalysis']
 const form = reactive({
   name: '',
   parentId: 0,
@@ -226,6 +241,13 @@ onMounted(loadMenus)
 
 .page-head h2 {
   margin-top: 8px;
+}
+
+.icon-preview-cell,
+.icon-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dialog-hero {
