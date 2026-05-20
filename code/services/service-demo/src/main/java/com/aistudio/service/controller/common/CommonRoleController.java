@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -101,6 +102,21 @@ public class CommonRoleController {
             relation.setUserId(userId);
             userRoleMapper.insert(relation);
         }
+        return Result.success();
+    }
+
+    @Operation(summary = "Delete role")
+    @DeleteMapping("/{id}")
+    @Transactional
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public Result<Void> delete(@PathVariable Long id) {
+        ensureEditableRole(id);
+        long userCount = userRoleMapper.selectCount(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
+        if (userCount > 0) {
+            throw new BusinessException(400, "该角色下仍有关联用户，不能删除");
+        }
+        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
+        roleMapper.deleteById(id);
         return Result.success();
     }
 

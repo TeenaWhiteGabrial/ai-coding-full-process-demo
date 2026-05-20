@@ -73,14 +73,13 @@
               <el-input v-model="form.component" />
             </el-form-item>
             <el-form-item label="图标">
-              <el-select v-model="form.icon" clearable style="width: 100%" placeholder="请选择图标">
-                <el-option v-for="icon in iconOptions" :key="icon" :label="icon" :value="icon">
-                  <div class="icon-option">
-                    <el-icon><component :is="icon" /></el-icon>
-                    <span>{{ icon }}</span>
-                  </div>
-                </el-option>
-              </el-select>
+              <div class="icon-picker-inline">
+                <el-button @click="iconDialogVisible = true">选择图标</el-button>
+                <div class="icon-preview-cell">
+                  <el-icon v-if="form.icon"><component :is="form.icon" /></el-icon>
+                  <span>{{ form.icon || '未选择图标' }}</span>
+                </div>
+              </div>
             </el-form-item>
             <el-form-item label="排序">
               <el-input-number v-model="form.sort" :min="0" />
@@ -96,6 +95,8 @@
         <el-button type="primary" @click="submit">保存</el-button>
       </template>
     </el-dialog>
+
+    <IconPickerDialog v-model:model-value="form.icon" v-model:visible="iconDialogVisible" />
   </div>
 </template>
 
@@ -103,6 +104,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { managementApi, type MenuItem } from '@/api/management'
+import IconPickerDialog from '@/components/IconPickerDialog.vue'
 
 interface MenuTreeItem extends MenuItem {
   children?: MenuTreeItem[]
@@ -111,7 +113,7 @@ interface MenuTreeItem extends MenuItem {
 const menus = ref<MenuTreeItem[]>([])
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
-const iconOptions = ['House', 'Setting', 'User', 'Key', 'Menu', 'Tools', 'Grid', 'Folder', 'Document', 'Monitor', 'DataAnalysis']
+const iconDialogVisible = ref(false)
 const form = reactive({
   name: '',
   parentId: 0,
@@ -173,6 +175,7 @@ function resetForm() {
 
 function openCreate() {
   resetForm()
+  iconDialogVisible.value = false
   dialogVisible.value = true
 }
 
@@ -185,6 +188,7 @@ function openEdit(row: MenuItem) {
   form.icon = row.icon || ''
   form.sort = row.sort || 0
   form.hidden = row.hidden || 0
+  iconDialogVisible.value = false
   dialogVisible.value = true
 }
 
@@ -244,7 +248,7 @@ onMounted(loadMenus)
 }
 
 .icon-preview-cell,
-.icon-option {
+.icon-picker-inline {
   display: inline-flex;
   align-items: center;
   gap: 8px;

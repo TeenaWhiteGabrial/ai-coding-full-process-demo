@@ -14,10 +14,13 @@
       <el-table :data="roles" border>
         <el-table-column prop="roleCode" label="角色编码" min-width="160" />
         <el-table-column prop="roleName" label="角色名称" min-width="160" />
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="240">
           <template #default="{ row }">
             <el-button link type="primary" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="openMenus(row)">
               菜单权限
+            </el-button>
+            <el-button link type="danger" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="removeRole(row)">
+              删除角色
             </el-button>
           </template>
         </el-table-column>
@@ -96,7 +99,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { managementApi, type RoleItem, type RoleMenuTreeItem } from '@/api/management'
 
 const roles = ref<RoleItem[]>([])
@@ -175,6 +178,13 @@ async function saveMenus() {
   await managementApi.updateRoleMenus(currentRole.value.id, menuIds)
   ElMessage.success('角色菜单已更新')
   dialogVisible.value = false
+}
+
+async function removeRole(role: RoleItem) {
+  await ElMessageBox.confirm(`确认删除角色 ${role.roleName} 吗？`, '提示', { type: 'warning' })
+  await managementApi.deleteRole(role.id)
+  ElMessage.success('角色已删除')
+  await loadRoles()
 }
 
 onMounted(loadRoles)

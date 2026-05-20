@@ -45,6 +45,7 @@ export const managementApi = {
 
   roleList: () => request.get('/common/role/list'),
   createRole: (data: any) => request.post('/common/role', data),
+  deleteRole: (id: number) => request.delete(`/common/role/${id}`),
   roleMenus: (id: number) => request.get(`/common/role/${id}/menus`),
   updateRoleMenus: (id: number, menuIds: number[]) => request.put(`/common/role/${id}/menus`, menuIds),
   roleUsers: (id: number) => request.get(`/common/role/${id}/users`),
