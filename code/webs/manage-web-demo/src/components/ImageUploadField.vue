@@ -1,14 +1,23 @@
 <template>
   <div class="image-upload-field">
-    <div class="preview-box">
+    <div
+      class="preview-box"
+      role="button"
+      tabindex="0"
+      @click="triggerSelect"
+      @keydown.enter.prevent="triggerSelect"
+      @keydown.space.prevent="triggerSelect"
+    >
       <img v-if="modelValue" :src="modelValue" alt="preview" class="preview-image">
-      <div v-else class="preview-empty">暂无图片</div>
-    </div>
-    <div class="actions-box">
-      <el-button type="primary" plain :loading="uploading" @click="triggerSelect">上传图片</el-button>
-      <el-button v-if="modelValue" text @click="clearValue">清空</el-button>
-      <div class="tip-text">{{ tip }}</div>
-      <div class="tip-text">大小不超过 {{ maxSizeMb }}MB，尺寸不超过 {{ maxWidth }} x {{ maxHeight }}</div>
+      <div v-else class="preview-empty">点击上传<br>暂无图片</div>
+      <button
+        v-if="modelValue"
+        class="preview-clear"
+        type="button"
+        @click.stop="clearValue"
+      >
+        清空
+      </button>
     </div>
     <input
       ref="fileInput"
@@ -28,17 +37,11 @@ import { uploadApi } from '@/api/upload'
 const props = withDefaults(defineProps<{
   modelValue?: string
   keyPrefix?: string
-  tip?: string
   maxSizeMb?: number
-  maxWidth?: number
-  maxHeight?: number
 }>(), {
   modelValue: '',
   keyPrefix: 'uploads',
-  tip: '支持 jpg/png/webp，使用通用 OSS 上传接口',
-  maxSizeMb: 2,
-  maxWidth: 1024,
-  maxHeight: 1024,
+  maxSizeMb: 10,
 })
 
 const emit = defineEmits<{
@@ -74,18 +77,6 @@ async function handleChange(event: Event) {
     return
   }
 
-  const meta = await loadImageMeta(file).catch(() => null)
-  if (!meta) {
-    ElMessage.warning('图片读取失败，请重新选择')
-    input.value = ''
-    return
-  }
-  if (meta.width > props.maxWidth || meta.height > props.maxHeight) {
-    ElMessage.warning(`图片尺寸不能超过 ${props.maxWidth} x ${props.maxHeight}`)
-    input.value = ''
-    return
-  }
-
   uploading.value = true
   try {
     const res = await uploadApi.upload(file, props.keyPrefix) as any
@@ -99,20 +90,6 @@ async function handleChange(event: Event) {
     input.value = ''
   }
 }
-
-function loadImageMeta(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const image = new Image()
-      image.onload = () => resolve({ width: image.width, height: image.height })
-      image.onerror = reject
-      image.src = String(reader.result)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 </script>
 
 <style scoped>
@@ -123,6 +100,7 @@ function loadImageMeta(file: File): Promise<{ width: number; height: number }> {
 }
 
 .preview-box {
+  position: relative;
   width: 88px;
   height: 88px;
   display: flex;
@@ -133,6 +111,22 @@ function loadImageMeta(file: File): Promise<{ width: number; height: number }> {
   border-radius: 16px;
   overflow: hidden;
   flex: 0 0 auto;
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.preview-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, hsl(220 20% 10% / 0.72));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.preview-box:hover::after {
+  opacity: 1;
 }
 
 .preview-image {
@@ -149,15 +143,34 @@ function loadImageMeta(file: File): Promise<{ width: number; height: number }> {
   line-height: 1.5;
 }
 
-.actions-box {
-  display: grid;
-  gap: 8px;
+.preview-clear {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  z-index: 1;
+  transform: translateX(-50%);
+  min-width: 48px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: hsl(0 0% 100% / 0.92);
+  color: hsl(220 18% 16%);
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
-.tip-text {
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  line-height: 1.5;
+.preview-box:hover .preview-clear {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.preview-clear:hover {
+  background: hsl(0 0% 100%);
 }
 
 .hidden-input {

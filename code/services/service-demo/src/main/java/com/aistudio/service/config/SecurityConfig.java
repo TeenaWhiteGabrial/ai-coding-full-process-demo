@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -53,17 +54,18 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
+                        .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/common/auth/public-key",
                                 "/common/auth/login",
                                 "/common/auth/token",
-                                "/common/site/config",
                                 "/doc.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/webjars/**",
                                 "/uploads/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/common/site/config")
                         .permitAll()
                         .requestMatchers("/common/auth/**", "/common/oss/**", "/common/menu/**")
                         .authenticated()

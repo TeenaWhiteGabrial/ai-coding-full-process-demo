@@ -30,15 +30,22 @@ function normalizeMenu(item: any): ConsoleMenu {
 
 export const useMenuStore = defineStore('menu', () => {
   const menus = ref<ConsoleMenu[]>([])
+  const loaded = ref(false)
 
-  async function fetchMenus() {
+  async function fetchMenus(force = false) {
+    if (loaded.value && !force) {
+      return menus.value
+    }
     const res = await request.get('/common/menu/tree') as any
     menus.value = (res.data || []).map(normalizeMenu)
+    loaded.value = true
+    return menus.value
   }
 
   function reset() {
     menus.value = []
+    loaded.value = false
   }
 
-  return { menus, fetchMenus, reset }
+  return { menus, loaded, fetchMenus, reset }
 })

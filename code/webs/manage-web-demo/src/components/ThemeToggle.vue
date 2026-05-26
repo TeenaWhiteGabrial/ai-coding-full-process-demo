@@ -1,16 +1,14 @@
 <template>
-  <el-button
-    class="theme-toggle"
-    @click="toggle"
-    :title="themeStore.theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'"
-  >
-    <el-icon v-if="themeStore.theme === 'dark'" :size="20">
-      <Sunny />
-    </el-icon>
-    <el-icon v-else :size="20">
-      <Moon />
-    </el-icon>
-  </el-button>
+  <el-tooltip :content="themeStore.theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'" placement="bottom">
+    <button class="header-action-btn" type="button" @click="toggle" :title="themeStore.theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'">
+      <el-icon v-if="themeStore.theme === 'dark'" :size="20">
+        <Sunny />
+      </el-icon>
+      <el-icon v-else :size="20">
+        <Moon />
+      </el-icon>
+    </button>
+  </el-tooltip>
 </template>
 
 <script setup lang="ts">
@@ -25,21 +23,28 @@ function toggle() {
 </script>
 
 <style scoped>
-.theme-toggle {
-  height: 36px;
+.header-action-btn {
   width: 36px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  display: flex;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card) / 0.92);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
-.theme-toggle:hover {
-  background: hsl(var(--secondary));
+.header-action-btn:hover {
+  border-color: hsl(var(--primary) / 0.22);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  transform: translateY(-1px);
 }
 </style>

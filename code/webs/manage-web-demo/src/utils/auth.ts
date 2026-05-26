@@ -7,7 +7,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const token = localStorage.getItem('token')
-  const loginPath = '/console/login'
+  const loginPath = '/login'
 
   if (!token && to.path !== loginPath) {
     localStorage.setItem('redirectUrl', encodeURIComponent(to.fullPath))
@@ -15,7 +15,7 @@ router.beforeEach((to) => {
   }
 
   if (token && to.path === loginPath) {
-    return '/console/dashboard'
+    return '/'
   }
 })
 

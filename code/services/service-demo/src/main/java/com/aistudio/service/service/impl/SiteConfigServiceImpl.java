@@ -1,5 +1,6 @@
 package com.aistudio.service.service.impl;
 
+import com.aistudio.service.dto.request.SiteConfigUpdateRequest;
 import com.aistudio.service.dto.response.SiteConfigVO;
 import com.aistudio.service.entity.SiteConfig;
 import com.aistudio.service.mapper.SiteConfigMapper;
@@ -25,6 +26,23 @@ public class SiteConfigServiceImpl implements SiteConfigService {
         SiteConfigVO vo = new SiteConfigVO();
         BeanUtils.copyProperties(config, vo);
         return vo;
+    }
+
+    @Override
+    public void updateConfig(SiteConfigUpdateRequest request) {
+        SiteConfig config = siteConfigMapper.selectById(DEFAULT_ID);
+        if (config == null) {
+            config = createDefaultConfig();
+        }
+
+        config.setSiteName(request.getSiteName());
+        config.setSiteDescription(request.getSiteDescription());
+        config.setLogoUrl(request.getLogoUrl());
+        config.setIconUrl(request.getIconUrl());
+        config.setFooterText(request.getFooterText());
+        config.setFooterCopyright(request.getFooterCopyright());
+        config.setFooterRecord(request.getFooterRecord());
+        siteConfigMapper.updateById(config);
     }
 
     private SiteConfig createDefaultConfig() {

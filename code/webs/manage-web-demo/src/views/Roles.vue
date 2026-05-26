@@ -1,30 +1,28 @@
 <template>
   <div class="manage-page">
     <el-card>
-      <template #header>
-        <div class="page-head">
-          <div>
-            <span class="kicker">角色管理</span>
-            <h2>角色与权限</h2>
-          </div>
-          <el-button type="primary" @click="openCreate">新建角色</el-button>
-        </div>
-      </template>
+      <div class="page-actions">
+        <el-button v-access="{ paths: ['/roles'] }" type="primary" @click="openCreate">新建角色</el-button>
+      </div>
 
-      <el-table :data="roles" border>
-        <el-table-column prop="roleCode" label="角色编码" min-width="160" />
-        <el-table-column prop="roleName" label="角色名称" min-width="160" />
-        <el-table-column label="操作" width="240">
-          <template #default="{ row }">
-            <el-button link type="primary" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="openMenus(row)">
-              菜单权限
-            </el-button>
-            <el-button link type="danger" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="removeRole(row)">
-              删除角色
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-shell">
+        <PageLoadingOverlay :loading="pageLoading" compact>
+          <el-table :data="roles" border>
+            <el-table-column prop="roleCode" label="角色编码" min-width="160" />
+            <el-table-column prop="roleName" label="角色名称" min-width="160" />
+            <el-table-column label="操作" width="240">
+              <template #default="{ row }">
+                <el-button v-access="{ paths: ['/roles'] }" link type="primary" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="openMenus(row)">
+                  菜单权限
+                </el-button>
+                <el-button v-access="{ paths: ['/roles'] }" link type="danger" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="removeRole(row)">
+                  删除角色
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </PageLoadingOverlay>
+      </div>
     </el-card>
 
     <el-dialog
@@ -36,10 +34,7 @@
       class="manage-editor-dialog"
     >
       <template #header>
-        <div class="dialog-hero">
-          <div class="dialog-title">创建角色</div>
-          <div class="dialog-subtitle">定义新的角色编码和展示名称，后续可继续分配菜单权限。</div>
-        </div>
+        <DialogHero title="创建角色" description="定义新的角色编码和展示名称，后续可继续分配菜单权限。" />
       </template>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="dialog-form">
@@ -70,10 +65,10 @@
       class="manage-editor-dialog"
     >
       <template #header>
-        <div class="dialog-hero">
-          <div class="dialog-title">角色菜单权限</div>
-          <div class="dialog-subtitle">为角色 {{ currentRole?.roleName || '' }} 选择可访问的菜单。</div>
-        </div>
+        <DialogHero
+          title="角色菜单权限"
+          :description="`为角色 ${currentRole?.roleName || ''} 选择可访问的菜单。`"
+        />
       </template>
 
       <div class="dialog-section">
@@ -101,8 +96,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { managementApi, type RoleItem, type RoleMenuTreeItem } from '@/api/management'
+import DialogHero from '@/components/DialogHero.vue'
+import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
 
 const roles = ref<RoleItem[]>([])
+const pageLoading = ref(false)
 const dialogVisible = ref(false)
 const createDialogVisible = ref(false)
 const currentRole = ref<RoleItem | null>(null)
@@ -132,8 +130,13 @@ const rules: FormRules = {
 }
 
 async function loadRoles() {
-  const res = await managementApi.roleList() as any
-  roles.value = res.data || []
+  pageLoading.value = true
+  try {
+    const res = await managementApi.roleList() as any
+    roles.value = res.data || []
+  } finally {
+    pageLoading.value = false
+  }
 }
 
 function collectChecked(nodes: RoleMenuTreeItem[], bucket: number[]) {
@@ -191,62 +194,27 @@ onMounted(loadRoles)
 </script>
 
 <style scoped>
-.manage-page {
+.manage-page :deep(.el-card__body) {
+  position: relative;
   display: grid;
-  gap: 18px;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: calc(100vh - 228px);
 }
 
-.page-head {
+.page-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  margin-bottom: 18px;
 }
 
-.kicker {
-  color: hsl(var(--primary));
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.page-head h2 {
-  margin-top: 8px;
-}
-
-.dialog-hero {
-  padding: 4px 0 2px;
-}
-
-.dialog-title {
-  color: hsl(var(--foreground));
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.dialog-subtitle {
-  margin-top: 8px;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-}
-
-.dialog-form {
-  display: grid;
-  gap: 16px;
-}
-
-.dialog-section {
-  padding: 18px;
-  background: hsl(var(--muted) / 0.55);
-  border: 1px solid hsl(var(--border));
+.table-shell {
   border-radius: 18px;
+  min-height: 0;
 }
 
-.section-title {
-  margin-bottom: 14px;
-  color: hsl(var(--foreground));
-  font-size: 15px;
-  font-weight: 700;
+.table-shell :deep(.page-loading-shell),
+.table-shell :deep(.el-table) {
+  min-height: 100%;
 }
 
 .field-tip {
@@ -254,24 +222,5 @@ onMounted(loadRoles)
   color: hsl(var(--muted-foreground));
   font-size: 12px;
   line-height: 1.5;
-}
-
-:deep(.manage-editor-dialog .el-dialog) {
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-:deep(.manage-editor-dialog .el-dialog__header) {
-  margin-right: 0;
-  padding: 22px 24px 8px;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-:deep(.manage-editor-dialog .el-dialog__body) {
-  padding: 20px 24px 12px;
-}
-
-:deep(.manage-editor-dialog .el-dialog__footer) {
-  padding: 0 24px 20px;
 }
 </style>

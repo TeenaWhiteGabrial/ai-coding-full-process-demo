@@ -1,81 +1,84 @@
 <template>
   <div class="settings-page">
-    <el-card class="profile-card">
-      <div class="profile-head">
-        <div class="avatar-badge">
-          <el-avatar :size="72" :src="userStore.userInfo?.avatar" icon="UserFilled" />
+    <PageLoadingOverlay :loading="pageLoading">
+      <el-card class="profile-card">
+        <div class="profile-head">
+          <div class="avatar-badge">
+            <el-avatar :size="72" :src="userStore.userInfo?.avatar" icon="UserFilled" />
+          </div>
+          <div>
+            <span class="panel-kicker">个人信息</span>
+            <h2>{{ userStore.userInfo?.realName || userStore.userInfo?.username || 'Administrator' }}</h2>
+            <p>管理你的基础资料和登录密码。</p>
+          </div>
         </div>
-        <div>
-          <span class="panel-kicker">个人信息</span>
-          <h2>{{ userStore.userInfo?.realName || userStore.userInfo?.username || 'Administrator' }}</h2>
-          <p>管理你的基础资料和登录密码。</p>
-        </div>
+      </el-card>
+
+      <div class="settings-grid">
+        <el-card>
+          <template #header>
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">基础资料</span>
+                <h3>个人资料</h3>
+              </div>
+            </div>
+          </template>
+          <el-form :model="form" label-position="top" class="settings-form">
+            <el-form-item label="头像">
+              <ImageUploadField
+                v-model="form.avatar"
+                key-prefix="avatars"
+                @uploaded="handleAvatarUploaded"
+              />
+            </el-form-item>
+            <el-form-item label="姓名">
+              <el-input v-model="form.realName" />
+            </el-form-item>
+            <el-form-item label="邮箱">
+              <el-input v-model="form.email" />
+            </el-form-item>
+            <el-button type="primary" @click="save">保存资料</el-button>
+          </el-form>
+        </el-card>
+
+        <el-card>
+          <template #header>
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">安全设置</span>
+                <h3>修改密码</h3>
+              </div>
+            </div>
+          </template>
+          <el-form :model="passwordForm" label-position="top" class="settings-form">
+            <el-form-item label="当前密码">
+              <el-input v-model="passwordForm.oldPassword" type="password" show-password />
+            </el-form-item>
+            <el-form-item label="新密码">
+              <el-input v-model="passwordForm.newPassword" type="password" show-password />
+            </el-form-item>
+            <el-form-item label="确认新密码">
+              <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+            </el-form-item>
+            <el-button type="primary" plain @click="changePassword">更新密码</el-button>
+          </el-form>
+        </el-card>
       </div>
-    </el-card>
-
-    <div class="settings-grid">
-      <el-card>
-        <template #header>
-          <div class="panel-head">
-            <div>
-              <span class="panel-kicker">基础资料</span>
-              <h3>个人资料</h3>
-            </div>
-          </div>
-        </template>
-        <el-form :model="form" label-position="top" class="settings-form">
-          <el-form-item label="头像">
-            <ImageUploadField
-              v-model="form.avatar"
-              key-prefix="avatars"
-              tip="使用通用上传接口，上传后自动回填头像地址"
-              @uploaded="handleAvatarUploaded"
-            />
-          </el-form-item>
-          <el-form-item label="姓名">
-            <el-input v-model="form.realName" />
-          </el-form-item>
-          <el-form-item label="邮箱">
-            <el-input v-model="form.email" />
-          </el-form-item>
-          <el-button type="primary" @click="save">保存资料</el-button>
-        </el-form>
-      </el-card>
-
-      <el-card>
-        <template #header>
-          <div class="panel-head">
-            <div>
-              <span class="panel-kicker">安全设置</span>
-              <h3>修改密码</h3>
-            </div>
-          </div>
-        </template>
-        <el-form :model="passwordForm" label-position="top" class="settings-form">
-          <el-form-item label="当前密码">
-            <el-input v-model="passwordForm.oldPassword" type="password" show-password />
-          </el-form-item>
-          <el-form-item label="新密码">
-            <el-input v-model="passwordForm.newPassword" type="password" show-password />
-          </el-form-item>
-          <el-form-item label="确认新密码">
-            <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
-          </el-form-item>
-          <el-button type="primary" plain @click="changePassword">更新密码</el-button>
-        </el-form>
-      </el-card>
-    </div>
+    </PageLoadingOverlay>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authApi } from '@/api'
+import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
 import { useUserStore } from '@/stores/user'
 import ImageUploadField from '@/components/ImageUploadField.vue'
 
 const userStore = useUserStore()
+const pageLoading = ref(false)
 const form = reactive({
   realName: userStore.userInfo?.realName || '',
   email: userStore.userInfo?.email || '',
@@ -86,6 +89,18 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: '',
 })
+
+async function loadProfile() {
+  pageLoading.value = true
+  try {
+    await userStore.refreshUserInfo()
+    form.realName = userStore.userInfo?.realName || ''
+    form.email = userStore.userInfo?.email || ''
+    form.avatar = userStore.userInfo?.avatar || ''
+  } finally {
+    pageLoading.value = false
+  }
+}
 
 async function save() {
   const res = await authApi.updateProfile(form) as any
@@ -125,6 +140,8 @@ async function handleAvatarUploaded(value: string) {
     ElMessage.success('头像已更新')
   }
 }
+
+onMounted(loadProfile)
 </script>
 
 <style scoped>

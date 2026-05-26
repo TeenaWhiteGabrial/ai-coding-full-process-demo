@@ -1,47 +1,45 @@
 <template>
   <div class="manage-page">
     <el-card>
-      <template #header>
-        <div class="page-head">
-          <div>
-            <span class="kicker">用户管理</span>
-            <h2>账号列表</h2>
-          </div>
-          <el-button type="primary" @click="openCreate">新增账号</el-button>
-        </div>
-      </template>
+      <div class="page-actions">
+        <el-button v-access="{ paths: ['/users'] }" type="primary" @click="openCreate">新增账号</el-button>
+      </div>
 
-      <div class="toolbar">
+      <div class="page-toolbar">
         <el-input v-model="keyword" placeholder="搜索账号 / 姓名 / 邮箱" clearable @keyup.enter="loadData" />
         <el-button @click="loadData">查询</el-button>
       </div>
 
-      <el-table :data="records" border>
-        <el-table-column prop="username" label="账号" min-width="140" />
-        <el-table-column prop="realName" label="姓名" min-width="120" />
-        <el-table-column prop="email" label="邮箱" min-width="200" />
-        <el-table-column label="角色" min-width="200">
-          <template #default="{ row }">
-            <el-tag v-for="name in row.roleNames" :key="name" class="tag-gap">{{ name }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="warning" @click="openResetPassword(row)">重置密码</el-button>
-            <el-button link type="danger" @click="removeUser(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-shell">
+        <PageLoadingOverlay :loading="pageLoading" compact>
+          <el-table :data="records" border>
+            <el-table-column prop="username" label="账号" min-width="140" />
+            <el-table-column prop="realName" label="姓名" min-width="120" />
+            <el-table-column prop="email" label="邮箱" min-width="200" />
+            <el-table-column label="角色" min-width="200">
+              <template #default="{ row }">
+                <el-tag v-for="name in row.roleNames" :key="name" class="tag-gap">{{ name }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 1 ? 'success' : 'info'">
+                  {{ row.status === 1 ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="280" fixed="right">
+              <template #default="{ row }">
+                <el-button v-access="{ paths: ['/users'] }" link type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-button v-access="{ paths: ['/users'] }" link type="warning" @click="openResetPassword(row)">重置密码</el-button>
+                <el-button v-access="{ paths: ['/users'] }" link type="danger" @click="removeUser(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </PageLoadingOverlay>
+      </div>
 
-      <div class="pager">
+      <div class="page-pager">
         <el-pagination
           background
           layout="total, prev, pager, next"
@@ -62,12 +60,10 @@
       class="manage-editor-dialog"
     >
       <template #header>
-        <div class="dialog-hero">
-          <div class="dialog-title">{{ editingId ? '编辑账号信息' : '创建新账号' }}</div>
-          <div class="dialog-subtitle">
-            {{ editingId ? '调整账号资料、角色与启用状态。' : '配置账号、初始密码与角色权限。' }}
-          </div>
-        </div>
+        <DialogHero
+          :title="editingId ? '编辑账号信息' : '创建新账号'"
+          :description="editingId ? '调整账号资料、角色与启用状态。' : '配置账号、初始密码与角色权限。'"
+        />
       </template>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="dialog-form">
@@ -96,10 +92,6 @@
               <ImageUploadField
                 v-model="form.avatar"
                 key-prefix="avatars"
-                tip="头像为非必填项，上传后自动回填图片地址"
-                :max-size-mb="2"
-                :max-width="1024"
-                :max-height="1024"
               />
             </el-form-item>
           </div>
@@ -139,10 +131,10 @@
       class="manage-editor-dialog"
     >
       <template #header>
-        <div class="dialog-hero">
-          <div class="dialog-title">重置账号密码</div>
-          <div class="dialog-subtitle">为账号 {{ resetTarget?.username || '' }} 设置一个新的登录密码。</div>
-        </div>
+        <DialogHero
+          title="重置账号密码"
+          :description="`为账号 ${resetTarget?.username || ''} 设置一个新的登录密码。`"
+        />
       </template>
 
       <el-form ref="resetFormRef" :model="resetForm" :rules="resetRules" label-position="top" class="dialog-form">
@@ -167,12 +159,15 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { managementApi, type RoleItem, type UserManageItem } from '@/api'
+import DialogHero from '@/components/DialogHero.vue'
 import ImageUploadField from '@/components/ImageUploadField.vue'
+import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
 
 const keyword = ref('')
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
+const pageLoading = ref(false)
 const records = ref<UserManageItem[]>([])
 const roleOptions = ref<RoleItem[]>([])
 const dialogVisible = ref(false)
@@ -271,9 +266,14 @@ async function loadRoles() {
 }
 
 async function loadData() {
-  const res = await managementApi.listUsers({ page: page.value, size: size.value, keyword: keyword.value || undefined }) as any
-  total.value = res.data?.total || 0
-  records.value = res.data?.records || []
+  pageLoading.value = true
+  try {
+    const res = await managementApi.listUsers({ page: page.value, size: size.value, keyword: keyword.value || undefined }) as any
+    total.value = res.data?.total || 0
+    records.value = res.data?.records || []
+  } finally {
+    pageLoading.value = false
+  }
 }
 
 function resetFormData() {
@@ -360,50 +360,28 @@ function handlePageChange(nextPage: number) {
 }
 
 onMounted(async () => {
-  await loadRoles()
-  await loadData()
+  pageLoading.value = true
+  try {
+    await loadRoles()
+    await loadData()
+  } finally {
+    pageLoading.value = false
+  }
 })
 </script>
 
 <style scoped>
-.manage-page {
+.manage-page :deep(.el-card__body) {
+  position: relative;
   display: grid;
-  gap: 18px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: calc(100vh - 228px);
 }
 
-.page-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.kicker {
-  color: hsl(var(--primary));
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.page-head h2 {
-  margin-top: 8px;
-}
-
-.toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.toolbar .el-input {
-  max-width: 320px;
-}
-
-.pager {
+.page-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-bottom: 18px;
 }
 
 .tag-gap {
@@ -411,56 +389,27 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 
-.dialog-hero {
-  padding: 4px 0 2px;
-}
-
-.dialog-title {
-  color: hsl(var(--foreground));
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.dialog-subtitle {
-  margin-top: 8px;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-}
-
-.dialog-form {
+.page-toolbar {
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 320px) auto;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
-.dialog-section {
-  padding: 18px;
-  background: hsl(var(--muted) / 0.55);
-  border: 1px solid hsl(var(--border));
+.page-pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.table-shell {
   border-radius: 18px;
+  min-height: 0;
 }
 
-.section-title {
-  margin-bottom: 14px;
-  color: hsl(var(--foreground));
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 16px;
-}
-
-.span-2 {
-  grid-column: 1 / -1;
-}
-
-.field-tip {
-  margin-top: 8px;
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
-  line-height: 1.5;
+.table-shell :deep(.page-loading-shell),
+.table-shell :deep(.el-table) {
+  min-height: 100%;
 }
 
 .switch-box {
@@ -474,32 +423,9 @@ onMounted(async () => {
   font-size: 13px;
 }
 
-:deep(.manage-editor-dialog .el-dialog) {
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-:deep(.manage-editor-dialog .el-dialog__header) {
-  margin-right: 0;
-  padding: 22px 24px 8px;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-:deep(.manage-editor-dialog .el-dialog__body) {
-  padding: 20px 24px 12px;
-}
-
-:deep(.manage-editor-dialog .el-dialog__footer) {
-  padding: 0 24px 20px;
-}
-
-@media (max-width: 900px) {
-  .form-grid {
+@media (max-width: 960px) {
+  .page-toolbar {
     grid-template-columns: 1fr;
-  }
-
-  .span-2 {
-    grid-column: auto;
   }
 }
 </style>

@@ -1,41 +1,39 @@
 <template>
   <div class="manage-page">
     <el-card>
-      <template #header>
-        <div class="page-head">
-          <div>
-            <span class="kicker">菜单管理</span>
-            <h2>控制台菜单</h2>
-          </div>
-          <el-button type="primary" @click="openCreate">新增菜单</el-button>
-        </div>
-      </template>
+      <div class="page-actions">
+        <el-button v-access="{ paths: ['/menus'] }" type="primary" @click="openCreate">新增菜单</el-button>
+      </div>
 
-      <el-table :data="menus" border row-key="id" default-expand-all>
-        <el-table-column prop="name" label="名称" min-width="180" />
-        <el-table-column prop="path" label="路径" min-width="180" />
-        <el-table-column prop="component" label="组件" min-width="160" />
-        <el-table-column label="图标" width="160">
-          <template #default="{ row }">
-            <div class="icon-preview-cell">
-              <el-icon v-if="row.icon"><component :is="row.icon" /></el-icon>
-              <span>{{ row.icon || '-' }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sort" label="排序" width="90" />
-        <el-table-column label="隐藏" width="90">
-          <template #default="{ row }">
-            {{ row.hidden === 1 ? '是' : '否' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="removeMenu(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-shell">
+        <PageLoadingOverlay :loading="pageLoading" compact>
+          <el-table :data="menus" border row-key="id" default-expand-all>
+            <el-table-column prop="name" label="名称" min-width="180" />
+            <el-table-column prop="path" label="路径" min-width="180" />
+            <el-table-column prop="component" label="组件" min-width="160" />
+            <el-table-column label="图标" width="160">
+              <template #default="{ row }">
+                <div class="icon-preview-cell">
+                  <el-icon v-if="row.icon"><component :is="row.icon" /></el-icon>
+                  <span>{{ row.icon || '-' }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="sort" label="排序" width="90" />
+            <el-table-column label="隐藏" width="90">
+              <template #default="{ row }">
+                {{ row.hidden === 1 ? '是' : '否' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180">
+              <template #default="{ row }">
+                <el-button v-access="{ paths: ['/menus'] }" link type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-button v-access="{ paths: ['/menus'] }" link type="danger" @click="removeMenu(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </PageLoadingOverlay>
+      </div>
     </el-card>
 
     <el-dialog
@@ -47,10 +45,10 @@
       class="manage-editor-dialog"
     >
       <template #header>
-        <div class="dialog-hero">
-          <div class="dialog-title">{{ editingId ? '编辑菜单配置' : '创建菜单项' }}</div>
-          <div class="dialog-subtitle">维护控制台菜单的名称、路径、排序与显隐状态。</div>
-        </div>
+        <DialogHero
+          :title="editingId ? '编辑菜单配置' : '创建菜单项'"
+          description="维护控制台菜单的名称、路径、排序与显隐状态。"
+        />
       </template>
 
       <el-form :model="form" label-position="top" class="dialog-form">
@@ -104,13 +102,16 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { managementApi, type MenuItem } from '@/api/management'
+import DialogHero from '@/components/DialogHero.vue'
 import IconPickerDialog from '@/components/IconPickerDialog.vue'
+import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
 
 interface MenuTreeItem extends MenuItem {
   children?: MenuTreeItem[]
 }
 
 const menus = ref<MenuTreeItem[]>([])
+const pageLoading = ref(false)
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const iconDialogVisible = ref(false)
@@ -158,8 +159,13 @@ function buildTree(items: MenuItem[]) {
 }
 
 async function loadMenus() {
-  const res = await managementApi.menuList() as any
-  menus.value = buildTree(res.data || [])
+  pageLoading.value = true
+  try {
+    const res = await managementApi.menuList() as any
+    menus.value = buildTree(res.data || [])
+  } finally {
+    pageLoading.value = false
+  }
 }
 
 function resetForm() {
@@ -224,27 +230,27 @@ onMounted(loadMenus)
 </script>
 
 <style scoped>
-.manage-page {
+.manage-page :deep(.el-card__body) {
+  position: relative;
   display: grid;
-  gap: 18px;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: calc(100vh - 228px);
 }
 
-.page-head {
+.page-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  margin-bottom: 18px;
 }
 
-.kicker {
-  color: hsl(var(--primary));
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.table-shell {
+  border-radius: 18px;
+  min-height: 0;
 }
 
-.page-head h2 {
-  margin-top: 8px;
+.table-shell :deep(.page-loading-shell),
+.table-shell :deep(.el-table) {
+  min-height: 100%;
 }
 
 .icon-preview-cell,
@@ -252,71 +258,5 @@ onMounted(loadMenus)
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-
-.dialog-hero {
-  padding: 4px 0 2px;
-}
-
-.dialog-title {
-  color: hsl(var(--foreground));
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.dialog-subtitle {
-  margin-top: 8px;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.7;
-}
-
-.dialog-form {
-  display: grid;
-  gap: 16px;
-}
-
-.dialog-section {
-  padding: 18px;
-  background: hsl(var(--muted) / 0.55);
-  border: 1px solid hsl(var(--border));
-  border-radius: 18px;
-}
-
-.section-title {
-  margin-bottom: 14px;
-  color: hsl(var(--foreground));
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 16px;
-}
-
-:deep(.manage-editor-dialog .el-dialog) {
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-:deep(.manage-editor-dialog .el-dialog__header) {
-  margin-right: 0;
-  padding: 22px 24px 8px;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-:deep(.manage-editor-dialog .el-dialog__body) {
-  padding: 20px 24px 12px;
-}
-
-:deep(.manage-editor-dialog .el-dialog__footer) {
-  padding: 0 24px 20px;
-}
-
-@media (max-width: 900px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

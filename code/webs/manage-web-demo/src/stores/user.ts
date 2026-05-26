@@ -3,6 +3,16 @@ import { ref } from 'vue'
 import request from '@/utils/request'
 import JSEncrypt from 'jsencrypt'
 
+import { authApi } from '@/api'
+import { useAccessStore } from '@/stores/access'
+import {
+  clearStoredSession,
+  getStoredToken,
+  getStoredUserInfo,
+  setStoredToken,
+  setStoredUserInfo,
+} from '@/utils/session'
+
 interface UserInfo {
   userId: number
   username: string
@@ -14,18 +24,32 @@ interface UserInfo {
 }
 
 export const useUserStore = defineStore('user', () => {
-  const userInfo = ref<UserInfo | null>(JSON.parse(localStorage.getItem('userInfo') || 'null'))
+  const userInfo = ref<UserInfo | null>(getStoredUserInfo<UserInfo>())
 
   function persistUserInfo(data: UserInfo | null) {
     userInfo.value = data
     if (data) {
-      localStorage.setItem('userInfo', JSON.stringify(data))
+      setStoredUserInfo(data)
     } else {
-      localStorage.removeItem('userInfo')
+      clearStoredSession()
+    }
+  }
+
+  function normalizeUserInfo(data: any, token = getStoredToken()): UserInfo {
+    return {
+      ...data,
+      avatar: data?.avatar,
+      email: data?.email,
+      realName: data?.realName ?? data?.real_name,
+      roles: Array.isArray(data?.roles) ? data.roles : [],
+      token,
+      userId: data?.userId ?? data?.user_id,
+      username: data?.username ?? '',
     }
   }
 
   async function login(username: string, password: string) {
+    const accessStore = useAccessStore()
     const keyRes = await request.get('/common/auth/public-key') as any
     const encryptor = new JSEncrypt()
     encryptor.setPublicKey(keyRes.data)
@@ -36,37 +60,28 @@ export const useUserStore = defineStore('user', () => {
     if (tokenRes.code !== 200) throw new Error(tokenRes.message || 'Login failed')
 
     const token = tokenRes.data.token
-    localStorage.setItem('token', token)
-
-    const userRes = await request.get('/common/auth/user-info') as any
-    if (userRes.code !== 200) throw new Error(userRes.message || 'Failed to load user info')
-
-    const data = {
-      ...userRes.data,
-      userId: userRes.data?.userId ?? userRes.data?.user_id,
-      realName: userRes.data?.realName ?? userRes.data?.real_name,
-    }
-    data.token = token
-    persistUserInfo(data)
+    setStoredToken(token)
+    accessStore.setAccessToken(token)
+    await refreshUserInfo()
   }
 
   async function refreshUserInfo() {
-    const token = localStorage.getItem('token') || ''
-    const userRes = await request.get('/common/auth/user-info') as any
+    const userRes = await authApi.getUserInfo() as any
     if (userRes.code !== 200) throw new Error(userRes.message || 'Failed to load user info')
-    const data = {
-      ...userRes.data,
-      userId: userRes.data?.userId ?? userRes.data?.user_id,
-      realName: userRes.data?.realName ?? userRes.data?.real_name,
-      token,
-    }
+    const data = normalizeUserInfo(userRes.data)
     persistUserInfo(data)
+    return data
   }
 
   function logout() {
+    const accessStore = useAccessStore()
     persistUserInfo(null)
-    localStorage.removeItem('token')
+    accessStore.resetAccess()
   }
 
-  return { userInfo, login, refreshUserInfo, logout }
+  function setUserInfo(data: UserInfo | null) {
+    persistUserInfo(data)
+  }
+
+  return { userInfo, login, refreshUserInfo, logout, setUserInfo }
 })

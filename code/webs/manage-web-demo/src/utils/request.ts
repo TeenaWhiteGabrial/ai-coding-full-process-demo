@@ -1,16 +1,31 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import { ElLoading, ElMessage } from 'element-plus'
 import type { LoadingInstance } from 'element-plus/es/components/loading/src/loading'
-import router from './auth'
+
+import { clearStoredSession, getStoredToken } from '@/utils/session'
+
+interface RequestConfig extends InternalAxiosRequestConfig {
+  showLoading?: boolean
+}
 
 const request: AxiosInstance = axios.create({
-  baseURL: '/ai-studio/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/ai-studio/v1',
   timeout: 30000,
 })
 
 let pendingCount = 0
 let loadingTimer: number | undefined
 let loadingInstance: LoadingInstance | null = null
+
+function getBusinessCode(data: unknown) {
+  if (!data || typeof data !== 'object' || !('code' in data)) {
+    return null
+  }
+
+  const value = (data as { code?: unknown }).code
+  const code = Number(value)
+  return Number.isNaN(code) ? null : code
+}
 
 function startGlobalLoading() {
   pendingCount += 1
@@ -40,9 +55,23 @@ function stopGlobalLoading() {
   }
 }
 
-request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  startGlobalLoading()
-  const token = localStorage.getItem('token')
+function redirectToLogin() {
+  const currentPath = window.location.hash.replace(/^#/, '') || '/'
+
+  if (currentPath.startsWith('/login')) return
+
+  const redirectQuery = currentPath === '/'
+    ? ''
+    : `?redirect=${encodeURIComponent(currentPath)}`
+
+  window.location.hash = `/login${redirectQuery}`
+}
+
+request.interceptors.request.use((config: RequestConfig) => {
+  if (config.showLoading) {
+    startGlobalLoading()
+  }
+  const token = getStoredToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -51,15 +80,29 @@ request.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 request.interceptors.response.use(
   (response) => {
-    stopGlobalLoading()
-    return response.data
+    if ((response.config as RequestConfig).showLoading) {
+      stopGlobalLoading()
+    }
+    const data = response.data
+    const businessCode = getBusinessCode(data)
+
+    if (businessCode !== null && businessCode !== 200) {
+      const message =
+        (typeof data === 'object' && data && 'message' in data && String(data.message)) ||
+        'Request failed'
+      ElMessage.error(message)
+      return Promise.reject(Object.assign(new Error(message), { response, data, businessCode }))
+    }
+
+    return data
   },
   (error) => {
-    stopGlobalLoading()
+    if ((error.config as RequestConfig | undefined)?.showLoading) {
+      stopGlobalLoading()
+    }
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      router.push('/console/login')
+      clearStoredSession()
+      redirectToLogin()
       ElMessage.warning('Session expired, please login again')
     } else {
       ElMessage.error(error.response?.data?.message || error.message || 'Request failed')

@@ -1,24 +1,28 @@
 <template>
   <div class="login-page">
+    <div class="login-toolbar">
+      <ThemeToggle />
+    </div>
+
     <div class="login-grid">
       <section class="hero-panel">
-        <div class="hero-badge">AI Studio Template</div>
-        <h1 class="hero-title">精简后台模板</h1>
+        <div class="hero-badge">Vue 3 + Element Plus</div>
+        <h1 class="hero-title">AI Studio 管理后台</h1>
         <p class="hero-copy">
-          当前模板只保留登录、上传、站点信息和个人设置，方便你在这个基础上继续扩展业务。
+          这一版界面已经切到更接近 vben 的视觉语言，但登录、菜单、上传、站点设置和用户管理逻辑仍然沿用当前项目。
         </p>
         <div class="hero-points">
           <div class="hero-point">
             <span class="point-dot"></span>
-            <span>文件上传接口已打通</span>
+            <span>业务接口与现有鉴权流程保持不变</span>
           </div>
           <div class="hero-point">
             <span class="point-dot"></span>
-            <span>站点配置可直接读取</span>
+            <span>菜单、角色、用户等后台能力直接可用</span>
           </div>
           <div class="hero-point">
             <span class="point-dot"></span>
-            <span>数据库使用独立 migration 初始化</span>
+            <span>Element Plus 页面风格向 vben web-ele 靠拢</span>
           </div>
         </div>
       </section>
@@ -26,7 +30,7 @@
       <el-card class="login-card">
         <div class="login-head">
           <span class="login-kicker">Console Access</span>
-          <h2>登录后台</h2>
+          <h2>登录控制台</h2>
           <p>默认测试账号：`admin` / `admin123`</p>
         </div>
 
@@ -48,10 +52,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import type { FormInstance } from 'element-plus'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
@@ -67,7 +73,10 @@ async function handleLogin() {
   loading.value = true
   try {
     await userStore.login(form.value.username, form.value.password)
-    router.push('/console/dashboard')
+    const redirect = typeof route.query.redirect === 'string'
+      ? decodeURIComponent(route.query.redirect)
+      : '/'
+    router.push(redirect || '/')
   } finally {
     loading.value = false
   }
@@ -77,34 +86,58 @@ async function handleLogin() {
 <style scoped>
 .login-page {
   min-height: 100vh;
+  position: relative;
   display: grid;
   place-items: center;
   padding: 28px;
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 28%),
+    radial-gradient(circle at bottom right, hsl(var(--primary) / 0.1), transparent 24%),
+    hsl(var(--background-deep));
+}
+
+.login-toolbar {
+  position: absolute;
+  top: 24px;
+  right: 24px;
 }
 
 .login-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 540px) minmax(320px, 460px);
-  gap: 24px;
-  width: min(1080px, 100%);
+  grid-template-columns: minmax(340px, 580px) minmax(320px, 440px);
+  gap: 26px;
+  align-items: stretch;
+  width: min(1120px, 100%);
 }
 
 .hero-panel {
-  padding: 36px;
+  position: relative;
+  overflow: hidden;
+  padding: 42px;
+  border: 1px solid hsl(var(--border));
   border-radius: 32px;
   background:
-    linear-gradient(135deg, hsl(var(--sidebar)), hsl(var(--primary-strong))),
-    hsl(var(--sidebar));
-  color: white;
+    linear-gradient(135deg, hsl(var(--sidebar)) 0%, hsl(var(--secondary)) 100%);
+  color: hsl(var(--foreground));
   box-shadow: 0 30px 70px hsl(var(--shadow-strong));
+}
+
+.hero-panel::after {
+  position: absolute;
+  inset: auto -80px -100px auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.18), transparent 66%);
+  content: '';
 }
 
 .hero-badge {
   display: inline-flex;
   padding: 8px 14px;
   margin-bottom: 22px;
-  background: hsl(0 0% 100% / 0.12);
-  border: 1px solid hsl(0 0% 100% / 0.16);
+  background: hsl(var(--primary-soft));
+  border: 1px solid hsl(var(--border));
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
@@ -121,7 +154,7 @@ async function handleLogin() {
 .hero-copy {
   margin: 18px 0 28px;
   max-width: 32rem;
-  color: hsl(210 40% 96% / 0.8);
+  color: hsl(var(--muted-foreground));
   font-size: 16px;
   line-height: 1.75;
 }
@@ -136,8 +169,10 @@ async function handleLogin() {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: hsl(0 0% 100% / 0.08);
+  background: hsl(var(--card) / 0.7);
+  border: 1px solid hsl(var(--border));
   border-radius: 18px;
+  backdrop-filter: blur(10px);
 }
 
 .point-dot {
@@ -145,12 +180,18 @@ async function handleLogin() {
   height: 10px;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: hsl(210 40% 96%);
-  box-shadow: 0 0 0 6px hsl(0 0% 100% / 0.1);
+  background: hsl(var(--primary));
+  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.12);
 }
 
 .login-card {
   align-self: center;
+  border-radius: 28px;
+  box-shadow: 0 24px 64px hsl(var(--shadow-soft));
+}
+
+.login-card :deep(.el-card__body) {
+  padding: 34px 32px 30px;
 }
 
 .login-head {
@@ -170,6 +211,7 @@ async function handleLogin() {
 .login-head h2 {
   margin: 0 0 10px;
   font-size: 30px;
+  line-height: 1.08;
 }
 
 .login-head p {
@@ -193,6 +235,11 @@ async function handleLogin() {
 @media (max-width: 960px) {
   .login-grid {
     grid-template-columns: 1fr;
+  }
+
+  .login-toolbar {
+    top: 16px;
+    right: 16px;
   }
 }
 

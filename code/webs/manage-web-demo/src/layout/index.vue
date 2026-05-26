@@ -1,101 +1,214 @@
 <template>
-  <el-container class="layout-container">
-    <el-aside :width="sidebarWidth" class="sidebar" :class="{ collapsed: isCollapsed }">
-      <div class="logo">
-        <img class="logo-icon" :src="siteLogo" alt="logo">
-        <span class="logo-text" v-if="!isCollapsed">{{ siteName }}</span>
+  <div
+    class="layout-shell"
+    :class="[`layout-${themeStore.layoutMode}`, `sidebar-${themeStore.sidebarStyle}`]"
+    :style="{ '--sidebar-width': sidebarWidth }"
+  >
+    <header class="header">
+      <div class="header-brand">
+        <button class="site-title" type="button" @click="router.push(homePath)">
+          <img class="site-title-icon" :src="siteLogo" alt="logo">
+          <div class="site-title-copy">
+            <strong>{{ siteName }}</strong>
+            <span>Management Console</span>
+          </div>
+        </button>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        class="sidebar-menu"
-        :collapse="isCollapsed"
-        router
-      >
-        <template v-for="menu in visibleMenus" :key="menu.id">
-          <el-sub-menu v-if="menu.children?.length" :index="String(menu.id)">
-            <template #title>
+
+      <div class="header-center">
+        <div class="page-intro">
+          <div v-if="themeStore.showBreadcrumb" class="page-breadcrumb">
+            <template v-for="(item, index) in breadcrumbTrail" :key="`${item.name}-${index}`">
+              <el-icon class="breadcrumb-icon">
+                <component :is="item.icon || 'Menu'" />
+              </el-icon>
+              <span :class="{ current: index === breadcrumbTrail.length - 1 }">{{ item.name }}</span>
+              <span v-if="index < breadcrumbTrail.length - 1" class="breadcrumb-separator">&gt;</span>
+            </template>
+          </div>
+          <h1 v-if="!themeStore.showBreadcrumb" class="page-title">{{ pageTitle }}</h1>
+        </div>
+      </div>
+
+      <nav v-if="themeStore.layoutMode === 'top-mix' && topLevelMenus.length" class="top-nav">
+        <button
+          v-for="menu in topLevelMenus"
+          :key="menu.id"
+          class="top-nav-item"
+          :class="{ active: currentTopMenuId === menu.id }"
+          type="button"
+          @click="activateTopMenu(menu)"
+        >
+          <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
+          <span>{{ menu.name }}</span>
+        </button>
+      </nav>
+
+      <div class="header-right">
+        <AppSearchDialog v-if="themeStore.enableSearch" />
+        <AppFullscreenToggle v-if="themeStore.enableFullscreen" />
+        <ThemeToggle v-if="themeStore.enableThemeToggle" />
+        <AppPreferencesDrawer />
+        <el-dropdown @command="handleCommand">
+          <button class="user-trigger" type="button">
+            <el-avatar
+              v-if="userInfo?.avatar"
+              :src="userInfo.avatar"
+              :size="34"
+            />
+            <el-avatar v-else :size="34" icon="UserFilled" />
+            <div class="user-copy">
+              <strong>{{ userInfo?.realName || userInfo?.username || 'User' }}</strong>
+              <span>{{ userInfo?.email || 'Console Member' }}</span>
+            </div>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="settings">个人中心</el-dropdown-item>
+            <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      </div>
+    </header>
+
+    <aside class="sidebar" :class="{ collapsed: isCollapsed }" :style="{ width: sidebarWidth }">
+      <div class="sidebar-scroll">
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="isCollapsed"
+          :collapse-transition="false"
+          class="sidebar-menu"
+          router
+          unique-opened
+        >
+          <template v-for="menu in visibleMenus" :key="menu.id">
+            <el-sub-menu v-if="menu.children?.length" :index="String(menu.id)">
+              <template #title>
+                <el-icon><component :is="menu.icon || 'Menu'" /></el-icon>
+                <span>{{ menu.name }}</span>
+              </template>
+              <el-menu-item
+                v-for="child in menu.children"
+                :key="child.id"
+                :index="withConsolePrefix(child.path)"
+              >
+                <el-icon><component :is="child.icon || 'Menu'" /></el-icon>
+                <span>{{ child.name }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else :index="withConsolePrefix(menu.path)">
               <el-icon><component :is="menu.icon || 'Menu'" /></el-icon>
               <span>{{ menu.name }}</span>
-            </template>
-            <el-menu-item
-              v-for="child in menu.children"
-              :key="child.id"
-              :index="withConsolePrefix(child.path)"
-            >
-              <el-icon><component :is="child.icon || 'Menu'" /></el-icon>
-              <span>{{ child.name }}</span>
             </el-menu-item>
-          </el-sub-menu>
-          <el-menu-item v-else :index="withConsolePrefix(menu.path)">
-            <el-icon><component :is="menu.icon || 'Menu'" /></el-icon>
-            <span>{{ menu.name }}</span>
-          </el-menu-item>
-        </template>
-      </el-menu>
-    </el-aside>
+          </template>
+        </el-menu>
+      </div>
 
-    <el-container>
-      <el-header class="header">
-        <div class="header-left">
-          <el-icon class="toggle-btn" @click="toggleSidebar">
+      <div class="sidebar-footer">
+        <button class="sidebar-toggle-btn" type="button" :aria-label="isCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar">
+          <el-icon>
             <Fold v-if="!isCollapsed" />
             <Expand v-else />
           </el-icon>
-          <span class="page-title">{{ route.meta.title || '控制台' }}</span>
-        </div>
-        <div class="header-right">
-          <ThemeToggle />
-          <el-dropdown @command="handleCommand">
-            <span class="user-info">
-              <el-avatar
-                v-if="userInfo?.avatar"
-                :src="userInfo.avatar"
-                :size="32"
-              />
-              <el-avatar v-else :size="32" icon="UserFilled" />
-              <span class="username" v-if="!isCollapsed">{{ userInfo?.realName || userInfo?.username || 'User' }}</span>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="settings">个人设置</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-header>
+        </button>
+      </div>
+    </aside>
 
-      <el-main class="main-content">
-        <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+    <section class="workspace">
+      <AppTabbar />
+
+      <main class="main-content">
+        <div class="content-shell" :class="`content-${themeStore.contentWidth}`">
+          <router-view v-slot="{ Component, route: viewRoute }">
+            <Transition
+              :name="pageTransitionClass"
+              mode="out-in"
+              appear
+            >
+              <keep-alive :include="tabbarStore.cachedTabNames">
+                <component
+                  :is="Component"
+                  :key="`${String(viewRoute.name || viewRoute.fullPath)}::${tabbarStore.getRefreshKey(viewRoute.fullPath)}`"
+                />
+              </keep-alive>
+            </Transition>
+          </router-view>
+        </div>
+      </main>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAccessStore } from '@/stores/access'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore, type ConsoleMenu } from '@/stores/menu'
+import { useTabbarStore } from '@/stores/tabbar'
+import { useThemeStore } from '@/stores/theme'
+import AppFullscreenToggle from '@/components/AppFullscreenToggle.vue'
+import AppPreferencesDrawer from '@/components/AppPreferencesDrawer.vue'
+import AppSearchDialog from '@/components/AppSearchDialog.vue'
+import AppTabbar from '@/components/AppTabbar.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { getSiteConfig } from '@/api/site'
-import { Fold, Expand } from '@element-plus/icons-vue'
+import { Expand, Fold } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
+const accessStore = useAccessStore()
 const userStore = useUserStore()
 const menuStore = useMenuStore()
-const userInfo = userStore.userInfo
+const tabbarStore = useTabbarStore()
+const themeStore = useThemeStore()
+const userInfo = computed(() => userStore.userInfo)
+const homePath = computed(() => accessStore.homePath)
 
 const isCollapsed = ref(false)
+const selectedTopMenuId = ref<number | null>(null)
 const savedCollapsed = localStorage.getItem('sidebarCollapsed')
 if (savedCollapsed === 'true') {
   isCollapsed.value = true
 }
 
-const sidebarWidth = computed(() => isCollapsed.value ? '64px' : '200px')
+const sidebarWidth = computed(() => isCollapsed.value ? '76px' : '268px')
 const activeMenu = computed(() => route.path)
-const visibleMenus = computed(() => filterVisibleMenus(menuStore.menus))
+const allVisibleMenus = computed(() => filterVisibleMenus(menuStore.menus))
+const topLevelMenus = computed(() => allVisibleMenus.value)
+const currentTopMenuId = computed(() => {
+  if (themeStore.layoutMode !== 'top-mix') {
+    return null
+  }
+
+  const matched = findMatchedTopMenu(route.path, topLevelMenus.value)
+  return matched?.id ?? selectedTopMenuId.value ?? topLevelMenus.value[0]?.id ?? null
+})
+const visibleMenus = computed(() => {
+  if (themeStore.layoutMode !== 'top-mix') {
+    return filterSidebarMenus(allVisibleMenus.value)
+  }
+
+  const currentTopMenu = topLevelMenus.value.find(menu => menu.id === currentTopMenuId.value)
+  if (!currentTopMenu) return []
+
+  const sidebarTopMenu = filterSidebarMenus([currentTopMenu])
+  return sidebarTopMenu.length > 0
+    ? (sidebarTopMenu[0].children?.length ? sidebarTopMenu[0].children : sidebarTopMenu)
+    : []
+})
+const pageTitle = computed(() => String(route.meta.title || '控制台'))
+const pageTransitionClass = computed(() =>
+  themeStore.pageTransitionEnabled ? themeStore.pageTransitionName : '',
+)
+const breadcrumbTrail = computed(() => {
+  const matchedMenus = findMenuTrail(route.path, allVisibleMenus.value)
+  if (matchedMenus.length > 0) {
+    return matchedMenus
+  }
+  return [{ name: pageTitle.value, icon: 'Menu' }]
+})
 const siteName = ref('AI Studio')
 const siteLogo = ref(`${import.meta.env.BASE_URL}ai-studio-logo.svg`)
 
@@ -128,9 +241,55 @@ function filterVisibleMenus(menus: ConsoleMenu[]): ConsoleMenu[] {
     }))
 }
 
+function filterSidebarMenus(menus: ConsoleMenu[]): ConsoleMenu[] {
+  return menus
+    .filter(menu => menu.path !== '/settings')
+    .map(menu => ({
+      ...menu,
+      children: filterSidebarMenus(menu.children || []),
+    }))
+}
+
 function withConsolePrefix(path?: string) {
-  if (!path) return '/console/dashboard'
-  return path.startsWith('/console') ? path : `/console${path}`
+  if (!path) return homePath.value
+  return path.replace(/^\/console(?=\/)/, '') || homePath.value
+}
+
+function findMatchedTopMenu(path: string, menus: ConsoleMenu[]) {
+  const normalizedPath = withConsolePrefix(path)
+
+  return menus.find((menu) => {
+    if (withConsolePrefix(menu.path) === normalizedPath) {
+      return true
+    }
+
+    return menu.children?.some(child => withConsolePrefix(child.path) === normalizedPath)
+  }) || null
+}
+
+function findMenuTrail(path: string, menus: ConsoleMenu[]): ConsoleMenu[] {
+  const normalizedPath = withConsolePrefix(path)
+
+  for (const menu of menus) {
+    if (withConsolePrefix(menu.path) === normalizedPath) {
+      return [menu]
+    }
+
+    if (menu.children?.length) {
+      const childTrail = findMenuTrail(normalizedPath, menu.children)
+      if (childTrail.length > 0) {
+        return [menu, ...childTrail]
+      }
+    }
+  }
+
+  return []
+}
+
+async function activateTopMenu(menu: ConsoleMenu) {
+  selectedTopMenuId.value = menu.id
+  const nextPath = menu.children?.[0]?.path || menu.path
+  await router.push(withConsolePrefix(nextPath))
 }
 
 function toggleSidebar() {
@@ -138,146 +297,383 @@ function toggleSidebar() {
   localStorage.setItem('sidebarCollapsed', isCollapsed.value.toString())
 }
 
-function handleCommand(command: string) {
+async function handleCommand(command: string) {
   if (command === 'logout') {
     userStore.logout()
     menuStore.reset()
-    router.push('/console/login')
+    tabbarStore.reset()
+    await router.replace('/login')
   } else if (command === 'settings') {
-    router.push('/console/settings')
+    await router.push('/settings')
   }
 }
 </script>
 
 <style scoped>
-.layout-container {
+.layout-shell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100vh;
+  background:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.08), transparent 26%),
+    hsl(var(--background-deep));
+}
+
+.header {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: hsl(var(--header) / 0.82);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid hsl(var(--border));
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 268px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 76px;
+  padding: 0;
 }
 
 .sidebar {
-  background: hsl(var(--card));
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background:
+    linear-gradient(180deg, hsl(var(--sidebar)), hsl(var(--sidebar-deep)));
   border-right: 1px solid hsl(var(--border));
   transition: width 0.3s ease;
+  box-shadow: 18px 0 40px hsl(var(--shadow-soft));
 }
 
-.logo {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: hsl(var(--secondary));
-  border-bottom: 1px solid hsl(var(--border));
-  transition: all 0.3s ease;
+.brand {
+  display: none;
 }
 
-.logo-text {
-  color: hsl(var(--primary));
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-}
-
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex: 0 0 auto;
-}
-
-.sidebar.collapsed .logo {
-  padding: 0;
+.sidebar-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 12px 20px;
 }
 
 .sidebar-menu {
   border-right: none;
   background: transparent;
-  padding: 8px 0;
 }
 
-:deep(.el-menu-item) {
-  color: hsl(var(--muted-foreground));
-  margin: 4px 8px;
-  border-radius: calc(var(--radius) - 2px);
-  height: 40px;
-  line-height: 40px;
-  transition: all 0.2s ease;
+.layout-shell.sidebar-light .sidebar {
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
 }
 
-:deep(.el-menu-item:hover) {
-  background: hsl(var(--secondary));
+.layout-shell.sidebar-semi-dark .sidebar {
+  background: linear-gradient(180deg, hsl(220 18% 16%), hsl(220 18% 12%));
+}
+
+.layout-shell.sidebar-light .brand-copy strong {
   color: hsl(var(--foreground));
 }
 
-:deep(.el-menu-item.is-active) {
-  background: hsl(var(--secondary));
-  color: hsl(var(--primary));
-  box-shadow: var(--ai-glow-sm);
+.layout-shell.sidebar-light .brand-copy span {
+  color: hsl(var(--muted-foreground));
 }
 
-:deep(.el-menu-item .el-icon) {
+.layout-shell.sidebar-light :deep(.sidebar-menu .el-menu-item),
+.layout-shell.sidebar-light :deep(.sidebar-menu .el-sub-menu__title) {
+  color: hsl(var(--muted-foreground));
+}
+
+.layout-shell.sidebar-semi-dark .brand-copy strong,
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-menu-item),
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-sub-menu__title) {
+  color: hsl(210 20% 92%);
+}
+
+.layout-shell.sidebar-semi-dark .brand-copy span {
+  color: hsl(215 16% 72%);
+}
+
+:deep(.sidebar-menu .el-menu-item),
+:deep(.sidebar-menu .el-sub-menu__title) {
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  line-height: 44px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+:deep(.sidebar-menu .el-menu-item:hover),
+:deep(.sidebar-menu .el-sub-menu__title:hover) {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  transform: translateX(2px);
+}
+
+:deep(.sidebar-menu .el-menu-item.is-active) {
+  background: hsl(var(--secondary));
+  color: hsl(var(--primary));
+  box-shadow: var(--ai-glow-ring);
+}
+
+:deep(.sidebar-menu .el-menu-item .el-icon),
+:deep(.sidebar-menu .el-sub-menu__title .el-icon) {
   font-size: 18px;
 }
 
-.header {
-  background: hsl(var(--card));
-  border-bottom: 1px solid hsl(var(--border));
+.sidebar-footer {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.sidebar-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card) / 0.85);
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--primary) / 0.18);
+  transform: translateY(-1px);
+}
+
+.workspace {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.header-brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  height: 60px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 16px 18px 16px 26px;
+}
+
+.header-center {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+}
+
+.layout-shell.layout-inset .header-brand {
+  margin: 18px 0 0 18px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 24px 0 0 0;
+}
+
+.layout-shell.layout-inset .header-center {
+  margin: 18px 18px 0 0;
+  border: 1px solid hsl(var(--border));
+  border-left: none;
+  border-radius: 0 24px 0 0;
+  padding-inline: 18px;
+}
+
+.layout-shell.layout-top-mix .header {
+  min-height: 88px;
+}
+
+.layout-shell.layout-top-mix .header-brand {
+  min-height: 88px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.site-title {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.site-title:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+  transform: translateY(-1px);
+}
+
+.site-title-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.site-title-copy {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.site-title-copy strong {
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.site-title-copy span {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px;
+  overflow: auto hidden;
+}
+
+.top-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.top-nav-item:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.top-nav-item.active {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--primary));
+  box-shadow: var(--ai-glow-xs);
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  gap: 12px;
+  padding-right: 26px;
+}
+
+.page-intro {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.page-breadcrumb {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.toggle-btn {
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  font-size: 28px;
+.breadcrumb-icon {
+  margin-right: 2px;
+  font-size: 16px;
 }
 
-.toggle-btn:hover {
-  background: hsl(var(--secondary));
+.page-breadcrumb .breadcrumb-separator {
+  opacity: 0.55;
+}
+
+.page-breadcrumb .current {
+  color: hsl(var(--foreground));
+  font-weight: 700;
 }
 
 .page-title {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 700;
   color: hsl(var(--foreground));
 }
 
-.user-info {
+.user-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 4px 12px;
-  border-radius: calc(var(--radius) - 2px);
-  transition: all 0.2s ease;
+  padding: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  border-radius: 16px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
-.user-info:hover {
+.user-trigger:hover {
   background: hsl(var(--secondary));
+  border-color: hsl(var(--primary) / 0.18);
 }
 
-.username {
-  font-size: 14px;
+.user-copy {
+  display: grid;
+  gap: 2px;
+  padding-right: 8px;
+  text-align: left;
+}
+
+.user-copy strong {
   color: hsl(var(--foreground));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-copy span {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
 }
 
 :deep(.el-avatar) {
@@ -299,9 +695,167 @@ function handleCommand(command: string) {
   color: hsl(var(--primary));
 }
 
-.main-content {
+:deep(.header-popover) {
+  border-radius: 18px;
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 26px 64px hsl(var(--shadow-strong));
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mode-card,
+.color-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 18px;
+  background: hsl(var(--panel));
+  cursor: pointer;
+}
+
+.mode-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+}
+
+.mode-card span {
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+.mode-card.active,
+.color-card.active {
+  border-color: hsl(var(--primary) / 0.35);
+  box-shadow: var(--ai-glow-xs);
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.color-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+.color-card strong {
+  font-size: 12px;
+}
+
+:global(html[data-show-breadcrumb='false'] .page-breadcrumb) {
+  display: none;
+}
+
+:global(html[data-header-fixed='false'] .header) {
   position: relative;
-  background: hsl(var(--background));
-  padding: 20px;
+}
+
+:global(html[data-header-glass='false'] .header) {
+  background: hsl(var(--header));
+  backdrop-filter: none;
+}
+
+.main-content {
+  min-width: 0;
+  overflow: auto;
+  min-height: 0;
+  padding: 24px 26px 26px;
+}
+
+.content-shell {
+  min-width: 0;
+  min-height: 100%;
+}
+
+.layout-shell.layout-inset .main-content {
+  padding-top: 18px;
+}
+
+.layout-shell.layout-inset .content-shell {
+  padding: 6px;
+}
+
+.content-shell.content-compact {
+  max-width: 1080px;
+}
+
+.content-shell.content-wide {
+  max-width: 1440px;
+}
+
+.content-shell.content-full {
+  max-width: none;
+}
+
+:global(html[data-content-width='compact'] .content-shell.content-compact),
+:global(html[data-content-width='wide'] .content-shell.content-wide) {
+  margin: 0 auto;
+}
+
+:global(html[data-layout-mode='top-mix'] .sidebar) {
+  box-shadow: 10px 0 30px hsl(var(--shadow-soft));
+}
+
+@media (max-width: 960px) {
+  .layout-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .header {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .header-brand,
+  .header-center,
+  .header-right {
+    padding: 0;
+    border: none;
+    margin: 0;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .user-copy span {
+    display: none;
+  }
+
+  .site-title {
+    padding-inline: 0;
+  }
+
+  .site-title-copy span {
+    display: none;
+  }
+
+  .main-content {
+    padding: 18px;
+  }
+
+  .tabbar-shell,
+  .tabbar-history {
+    padding-inline: 12px;
+  }
 }
 </style>

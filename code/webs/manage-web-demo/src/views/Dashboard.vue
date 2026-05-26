@@ -1,121 +1,125 @@
 <template>
-  <div class="dashboard-page">
-    <section class="hero">
-      <div>
-        <span class="section-kicker">Template Overview</span>
-        <h1>基础能力已经就位</h1>
-        <p>你现在可以直接测试文件上传、站点配置读取和账户配置修改。</p>
-      </div>
-      <el-button type="primary" size="large" class="hero-action" @click="triggerUpload">
-        上传测试文件
-      </el-button>
-      <input ref="fileInput" type="file" style="display: none" @change="handleFileChange">
-    </section>
-
-    <section class="stats-grid">
-      <article class="mini-stat">
-        <span class="stat-label">已保留能力</span>
-        <strong>4 项</strong>
-        <small>登录、菜单、上传、站点信息</small>
-      </article>
-      <article class="mini-stat">
-        <span class="stat-label">API 基础路径</span>
-        <strong>/ai-studio/v1</strong>
-        <small>前后端已经对齐</small>
-      </article>
-      <article class="mini-stat">
-        <span class="stat-label">数据库</span>
-        <strong>template_demo_v2</strong>
-        <small>使用独立 migration 初始化</small>
-      </article>
-    </section>
-
-    <section class="content-grid">
-      <el-card class="upload-panel">
-        <template #header>
-          <div class="panel-head">
-            <div>
-              <span class="panel-kicker">Upload</span>
-              <h3>文件上传测试</h3>
-            </div>
-          </div>
-        </template>
-        <p class="panel-copy">点击按钮上传任意文件，结果会展示返回的文件 URL 和对象键。</p>
-        <el-button type="primary" @click="triggerUpload">选择文件</el-button>
-        <div v-if="uploading" class="upload-state">正在上传，请稍候…</div>
-        <div v-if="lastUpload" class="upload-result">
-          <div class="result-row">
-            <span>文件名</span>
-            <strong>{{ lastUpload.fileName }}</strong>
-          </div>
-          <div class="result-row">
-            <span>对象键</span>
-            <code>{{ lastUpload.ossKey }}</code>
-          </div>
-          <div class="result-row">
-            <span>访问地址</span>
-            <a :href="lastUpload.ossUrl" target="_blank" rel="noreferrer">{{ lastUpload.ossUrl }}</a>
-          </div>
+  <PageLoadingOverlay :loading="pageLoading">
+    <div class="dashboard-page">
+      <section class="hero">
+        <div>
+          <span class="section-kicker">Template Overview</span>
+          <h1>基础能力已经就位</h1>
+          <p>你现在可以直接测试文件上传、站点配置读取和账户配置修改。</p>
         </div>
-      </el-card>
+        <el-button type="primary" size="large" class="hero-action" @click="triggerUpload">
+          上传测试文件
+        </el-button>
+        <input ref="fileInput" type="file" style="display: none" @change="handleFileChange">
+      </section>
 
-      <el-card class="site-panel">
-        <template #header>
-          <div class="panel-head">
-            <div>
-              <span class="panel-kicker">Site Config</span>
-              <h3>站点配置</h3>
+      <section class="stats-grid">
+        <article class="mini-stat">
+          <span class="stat-label">已保留能力</span>
+          <strong>4 项</strong>
+          <small>登录、菜单、上传、站点信息</small>
+        </article>
+        <article class="mini-stat">
+          <span class="stat-label">API 基础路径</span>
+          <strong>/ai-studio/v1</strong>
+          <small>前后端已经对齐</small>
+        </article>
+        <article class="mini-stat">
+          <span class="stat-label">数据库</span>
+          <strong>template_demo_v2</strong>
+          <small>使用独立 migration 初始化</small>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <el-card class="upload-panel">
+          <template #header>
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Upload</span>
+                <h3>文件上传测试</h3>
+              </div>
+            </div>
+          </template>
+          <p class="panel-copy">点击按钮上传任意文件，结果会展示返回的文件 URL 和对象键。</p>
+          <el-button type="primary" @click="triggerUpload">选择文件</el-button>
+          <div v-if="uploading" class="upload-state">正在上传，请稍候…</div>
+          <div v-if="lastUpload" class="upload-result">
+            <div class="result-row">
+              <span>文件名</span>
+              <strong>{{ lastUpload.fileName }}</strong>
+            </div>
+            <div class="result-row">
+              <span>对象键</span>
+              <code>{{ lastUpload.ossKey }}</code>
+            </div>
+            <div class="result-row">
+              <span>访问地址</span>
+              <a :href="lastUpload.ossUrl" target="_blank" rel="noreferrer">{{ lastUpload.ossUrl }}</a>
             </div>
           </div>
-        </template>
-        <div class="info-list">
-          <div class="info-item">
-            <span>站点名称</span>
-            <strong>{{ siteInfo.siteName || '-' }}</strong>
-          </div>
-          <div class="info-item">
-            <span>站点描述</span>
-            <strong>{{ siteInfo.siteDescription || '-' }}</strong>
-          </div>
-          <div class="info-item">
-            <span>Logo 地址</span>
-            <code>{{ siteInfo.logoUrl || '-' }}</code>
-          </div>
-          <div class="info-item">
-            <span>Footer</span>
-            <strong>{{ siteInfo.footerText || '-' }}</strong>
-          </div>
-        </div>
-      </el-card>
+        </el-card>
 
-      <el-card class="api-panel">
-        <template #header>
-          <div class="panel-head">
-            <div>
-              <span class="panel-kicker">API Endpoints</span>
-              <h3>可直接联调的接口</h3>
+        <el-card class="site-panel">
+          <template #header>
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Site Config</span>
+                <h3>站点配置</h3>
+              </div>
+            </div>
+          </template>
+          <div class="info-list">
+            <div class="info-item">
+              <span>站点名称</span>
+              <strong>{{ siteInfo.siteName || '-' }}</strong>
+            </div>
+            <div class="info-item">
+              <span>站点描述</span>
+              <strong>{{ siteInfo.siteDescription || '-' }}</strong>
+            </div>
+            <div class="info-item">
+              <span>Logo 地址</span>
+              <code>{{ siteInfo.logoUrl || '-' }}</code>
+            </div>
+            <div class="info-item">
+              <span>Footer</span>
+              <strong>{{ siteInfo.footerText || '-' }}</strong>
             </div>
           </div>
-        </template>
-        <ul class="endpoint-list">
-          <li><code>POST /common/auth/token</code></li>
-          <li><code>GET /common/auth/user-info</code></li>
-          <li><code>POST /common/oss/upload</code></li>
-          <li><code>GET /common/site/config</code></li>
-          <li><code>GET /common/menu/tree</code></li>
-        </ul>
-      </el-card>
-    </section>
-  </div>
+        </el-card>
+
+        <el-card class="api-panel">
+          <template #header>
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">API Endpoints</span>
+                <h3>可直接联调的接口</h3>
+              </div>
+            </div>
+          </template>
+          <ul class="endpoint-list">
+            <li><code>POST /common/auth/token</code></li>
+            <li><code>GET /common/auth/user-info</code></li>
+            <li><code>POST /common/oss/upload</code></li>
+            <li><code>GET /common/site/config</code></li>
+            <li><code>GET /common/menu/tree</code></li>
+          </ul>
+        </el-card>
+      </section>
+    </div>
+  </PageLoadingOverlay>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSiteConfig } from '@/api/site'
+import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
 import { uploadApi } from '@/api/upload'
 
 const fileInput = ref<HTMLInputElement | null>(null)
+const pageLoading = ref(false)
 const uploading = ref(false)
 const siteInfo = ref({
   siteName: '',
@@ -130,8 +134,13 @@ const lastUpload = ref<null | {
 }>(null)
 
 onMounted(async () => {
-  const config = await getSiteConfig()
-  siteInfo.value = config
+  pageLoading.value = true
+  try {
+    const config = await getSiteConfig()
+    siteInfo.value = config
+  } finally {
+    pageLoading.value = false
+  }
 })
 
 function triggerUpload() {
