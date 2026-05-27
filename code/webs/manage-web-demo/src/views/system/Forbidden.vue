@@ -1,18 +1,24 @@
 <template>
-  <section class="system-page">
-    <div class="system-card">
-      <span class="system-code">403</span>
-      <h1>当前账号没有访问这个页面的权限</h1>
-      <p>可以返回工作台，或者切换有权限的账号后再试一次。</p>
-      <div class="system-actions">
-        <el-button @click="router.back()">返回上一页</el-button>
-        <el-button type="primary" @click="router.push(accessStore.homePath)">回到首页</el-button>
+  <section class="fallback-page">
+    <Icon403 class="fallback-illustration fallback-illustration-403" />
+
+    <div class="fallback-copy">
+      <div class="fallback-code">403</div>
+      <h1>抱歉，你无权访问该页面</h1>
+      <p>当前账号没有对应的访问权限。你可以返回上一页，或者切换有权限的账号后继续操作。</p>
+      <div class="fallback-actions">
+        <el-button size="large" @click="router.back()">返回上一页</el-button>
+        <el-button type="primary" size="large" @click="router.push(accessStore.homePath)">
+          回到首页
+        </el-button>
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import Icon403 from './components/Icon403.vue'
+
 import { useAccessStore } from '@/stores/access'
 import { useRouter } from 'vue-router'
 
@@ -21,60 +27,76 @@ const router = useRouter()
 </script>
 
 <style scoped>
-.system-page {
+.fallback-page {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.12), transparent 28%),
-    hsl(var(--background-deep));
-}
-
-.system-card {
-  width: min(100%, 640px);
-  padding: 40px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 32px;
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.95), hsl(var(--card) / 0.82));
-  box-shadow: 0 32px 80px hsl(var(--shadow-soft));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
   text-align: center;
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.1), transparent 28%),
+    hsl(var(--background));
 }
 
-.system-code {
-  display: inline-block;
+.fallback-illustration {
+  width: min(100%, 420px);
+  height: auto;
+}
+
+.fallback-illustration-403 {
+  width: min(100%, 360px);
+}
+
+.fallback-copy {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 620px);
+}
+
+.fallback-code {
   color: hsl(var(--primary));
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 700;
 }
 
-.system-card h1 {
-  margin: 16px 0 12px;
-  font-size: clamp(28px, 4vw, 38px);
+.fallback-copy h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: clamp(30px, 4vw, 38px);
+  line-height: 1.2;
 }
 
-.system-card p {
+.fallback-copy p {
   margin: 0 auto;
-  max-width: 32rem;
   color: hsl(var(--muted-foreground));
+  max-width: 38rem;
   line-height: 1.8;
 }
 
-.system-actions {
+.fallback-actions {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-top: 28px;
 }
 
 @media (max-width: 640px) {
-  .system-card {
-    padding: 28px 22px;
+  .fallback-page {
+    padding: 24px 16px;
   }
 
-  .system-actions {
+  .fallback-illustration {
+    width: min(100%, 300px);
+  }
+
+  .fallback-code {
+    font-size: 56px;
+  }
+
+  .fallback-actions {
     flex-direction: column;
   }
 }

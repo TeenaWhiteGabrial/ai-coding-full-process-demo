@@ -10,8 +10,10 @@ import com.aistudio.service.dto.request.UserUpdateRequest;
 import com.aistudio.service.dto.response.PageResult;
 import com.aistudio.service.dto.response.UserManageVO;
 import com.aistudio.service.entity.SysRole;
+import com.aistudio.service.entity.SysOrg;
 import com.aistudio.service.entity.SysUser;
 import com.aistudio.service.entity.SysUserRole;
+import com.aistudio.service.mapper.SysOrgMapper;
 import com.aistudio.service.mapper.SysRoleMapper;
 import com.aistudio.service.mapper.SysUserMapper;
 import com.aistudio.service.mapper.SysUserRoleMapper;
@@ -35,13 +37,14 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final SysUserMapper userMapper;
+    private final SysOrgMapper orgMapper;
     private final SysRoleMapper roleMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityUtils securityUtils;
 
     @Override
-    public PageResult<UserManageVO> listUsers(int page, int size, String keyword) {
+    public PageResult<UserManageVO> listUsers(int page, int size, String keyword, Long orgId) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
             wrapper.and(query -> query
@@ -50,6 +53,9 @@ public class UserServiceImpl implements UserService {
                     .like(SysUser::getRealName, keyword)
                     .or()
                     .like(SysUser::getEmail, keyword));
+        }
+        if (orgId != null) {
+            wrapper.eq(SysUser::getOrgId, orgId);
         }
         wrapper.orderByDesc(SysUser::getId);
         Page<SysUser> result = userMapper.selectPage(new Page<>(page, size), wrapper);
@@ -64,6 +70,13 @@ public class UserServiceImpl implements UserService {
         List<Long> allRoleIds = userRoles.stream().map(SysUserRole::getRoleId).distinct().toList();
         Map<Long, SysRole> roleMap = allRoleIds.isEmpty() ? Map.of() : roleMapper.selectBatchIds(allRoleIds).stream()
                 .collect(Collectors.toMap(SysRole::getId, Function.identity()));
+        List<Long> orgIds = result.getRecords().stream()
+                .map(SysUser::getOrgId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, SysOrg> orgMap = orgIds.isEmpty() ? Map.of() : orgMapper.selectBatchIds(orgIds).stream()
+                .collect(Collectors.toMap(SysOrg::getId, Function.identity()));
 
         List<UserManageVO> records = result.getRecords().stream().map(user -> {
             List<Long> roleIds = roleIdsByUser.getOrDefault(user.getId(), List.of());
@@ -71,12 +84,15 @@ public class UserServiceImpl implements UserService {
                     .map(roleMap::get)
                     .filter(java.util.Objects::nonNull)
                     .toList();
+            SysOrg org = user.getOrgId() == null ? null : orgMap.get(user.getOrgId());
             UserManageVO vo = new UserManageVO();
             vo.setId(user.getId());
             vo.setUsername(user.getUsername());
             vo.setRealName(user.getRealName());
             vo.setEmail(user.getEmail());
             vo.setAvatar(user.getAvatar());
+            vo.setOrgId(user.getOrgId());
+            vo.setOrgName(org == null ? null : org.getOrgName());
             vo.setStatus(user.getStatus());
             vo.setCreatedAt(user.getCreatedAt());
             vo.setUpdatedAt(user.getUpdatedAt());
@@ -94,7 +110,7 @@ public class UserServiceImpl implements UserService {
         long count = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUsername, request.getUsername()));
         if (count > 0) {
-            throw new BusinessException(400, "username already exists");
+            throw new BusinessException(400, "用户名已存在");
         }
 
         SysUser user = new SysUser();
@@ -103,6 +119,7 @@ public class UserServiceImpl implements UserService {
         user.setRealName(normalize(request.getRealName()));
         user.setEmail(normalize(request.getEmail()));
         user.setAvatar(normalize(request.getAvatar()));
+        user.setOrgId(resolveOrgId(request.getOrgId()));
         user.setStatus(request.getStatus() == null ? 1 : request.getStatus());
         userMapper.insert(user);
 
@@ -122,6 +139,9 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getAvatar() != null) {
             user.setAvatar(normalize(request.getAvatar()));
+        }
+        if (request.getOrgId() != null || user.getOrgId() != null) {
+            user.setOrgId(resolveOrgId(request.getOrgId()));
         }
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
@@ -152,14 +172,14 @@ public class UserServiceImpl implements UserService {
     public void changePassword(Long userId, ChangePasswordRequest request) {
         Long currentUserId = securityUtils.getCurrentUserId();
         if (currentUserId == null || !currentUserId.equals(userId)) {
-            throw new BusinessException(403, "can only change your own password");
+            throw new BusinessException(403, "只能修改自己的密码");
         }
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException(404, "user not found");
+            throw new BusinessException(404, "用户不存在");
         }
         if (!matchesPassword(request.getOldPassword(), user.getPassword())) {
-            throw new BusinessException(400, "old password is incorrect");
+            throw new BusinessException(400, "旧密码错误");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userMapper.updateById(user);
@@ -169,11 +189,11 @@ public class UserServiceImpl implements UserService {
     public void updateProfile(Long userId, UpdateProfileRequest request) {
         Long currentUserId = securityUtils.getCurrentUserId();
         if (currentUserId == null || !currentUserId.equals(userId)) {
-            throw new BusinessException(403, "can only update your own profile");
+            throw new BusinessException(403, "只能修改自己的个人资料");
         }
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException(404, "user not found");
+            throw new BusinessException(404, "用户不存在");
         }
         if (request.getRealName() != null) {
             user.setRealName(request.getRealName());
@@ -196,7 +216,7 @@ public class UserServiceImpl implements UserService {
     private SysUser requireUser(Long id) {
         SysUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException(404, "user not found");
+            throw new BusinessException(404, "用户不存在");
         }
         return user;
     }
@@ -215,6 +235,17 @@ public class UserServiceImpl implements UserService {
             relation.setRoleId(roleId);
             userRoleMapper.insert(relation);
         }
+    }
+
+    private Long resolveOrgId(Long orgId) {
+        if (orgId == null || orgId == 0L) {
+            return null;
+        }
+        SysOrg org = orgMapper.selectById(orgId);
+        if (org == null) {
+            throw new BusinessException(400, "组织不存在");
+        }
+        return orgId;
     }
 
     private String normalize(String value) {

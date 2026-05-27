@@ -17,6 +17,23 @@ export type ThemeColor =
   | 'slate'
   | 'violet'
 
+interface ThemePalette {
+  hex: string
+  hsl: string
+}
+
+const themePalettes: Record<ThemeColor, ThemePalette> = {
+  default: { hex: '#1677ff', hsl: '212 100% 45%' },
+  'deep-blue': { hex: '#2563eb', hsl: '221.2 83.2% 53.3%' },
+  green: { hex: '#16a34a', hsl: '142.1 76.2% 36.3%' },
+  orange: { hex: '#ea580c', hsl: '24.6 95% 53.1%' },
+  pink: { hex: '#db2777', hsl: '346.8 77.2% 49.8%' },
+  rose: { hex: '#e11d48', hsl: '346.8 77.2% 49.8%' },
+  'sky-blue': { hex: '#3b82f6', hsl: '221.2 83.2% 53.3%' },
+  slate: { hex: '#475569', hsl: '222.2 84% 4.9%' },
+  violet: { hex: '#7c3aed', hsl: '262.1 83.3% 57.8%' },
+}
+
 interface ThemePreferences {
   contentWidth: ContentWidth
   enableFullscreen: boolean
@@ -66,6 +83,39 @@ function loadPreferences(): ThemePreferences {
   }
 }
 
+function hexToRgb(hex: string) {
+  const normalized = hex.replace('#', '')
+  const full = normalized.length === 3
+    ? normalized
+      .split('')
+      .map((value) => `${value}${value}`)
+      .join('')
+    : normalized
+  const value = Number.parseInt(full, 16)
+
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  }
+}
+
+function clampChannel(value: number) {
+  return Math.min(255, Math.max(0, Math.round(value)))
+}
+
+function mixHex(baseHex: string, targetHex: string, ratio: number) {
+  const base = hexToRgb(baseHex)
+  const target = hexToRgb(targetHex)
+  const mixed = {
+    b: clampChannel(base.b + (target.b - base.b) * ratio),
+    g: clampChannel(base.g + (target.g - base.g) * ratio),
+    r: clampChannel(base.r + (target.r - base.r) * ratio),
+  }
+
+  return `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`
+}
+
 export const useThemeStore = defineStore('theme', () => {
   const saved = loadPreferences()
 
@@ -101,6 +151,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function syncDom() {
     const root = document.documentElement
+    const palette = themePalettes[themeColor.value]
     root.classList.toggle('dark', theme.value === 'dark')
     root.classList.toggle('light', theme.value !== 'dark')
     root.dataset.theme = themeColor.value
@@ -110,6 +161,17 @@ export const useThemeStore = defineStore('theme', () => {
     root.dataset.showBreadcrumb = String(showBreadcrumb.value)
     root.dataset.headerFixed = String(headerFixed.value)
     root.dataset.headerGlass = String(headerGlass.value)
+    const rgb = hexToRgb(palette.hex)
+    root.style.setProperty('--primary', palette.hsl)
+    root.style.setProperty('--theme-primary', palette.hsl)
+    root.style.setProperty('--el-color-primary', palette.hex)
+    root.style.setProperty('--el-color-primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`)
+    root.style.setProperty('--el-color-primary-light-3', mixHex(palette.hex, '#ffffff', 0.3))
+    root.style.setProperty('--el-color-primary-light-5', mixHex(palette.hex, '#ffffff', 0.5))
+    root.style.setProperty('--el-color-primary-light-7', mixHex(palette.hex, '#ffffff', 0.7))
+    root.style.setProperty('--el-color-primary-light-8', mixHex(palette.hex, '#ffffff', 0.78))
+    root.style.setProperty('--el-color-primary-light-9', mixHex(palette.hex, '#ffffff', 0.88))
+    root.style.setProperty('--el-color-primary-dark-2', mixHex(palette.hex, '#000000', 0.18))
   }
 
   function persist() {

@@ -10,7 +10,7 @@ import com.aistudio.service.dto.response.UserManageVO;
 
 public interface UserService {
 
-    PageResult<UserManageVO> listUsers(int page, int size, String keyword);
+    PageResult<UserManageVO> listUsers(int page, int size, String keyword, Long orgId);
 
     Long createUser(UserCreateRequest request);
 

@@ -5,6 +5,10 @@
 @import './vendor/vben/element-plus.css';
 
 :root {
+  --theme-primary: var(--primary);
+  --theme-primary-rgb: 22, 119, 255;
+  --theme-primary-soft: 212 100% 97%;
+  --theme-primary-strong: 214 100% 37%;
   --primary-strong: 214 100% 37%;
   --primary-soft: 212 100% 97%;
   --panel: var(--card);
@@ -12,7 +16,9 @@
   --surface-soft: var(--accent-lighter);
   --shadow-soft: 220 30% 23% / 0.08;
   --shadow-strong: 220 40% 20% / 0.16;
-  --glow-color: var(--primary);
+  --glow-color: var(--theme-primary);
+  --theme-surface-active: var(--secondary);
+  --theme-surface-active-strong: var(--panel);
 
   --el-bg-color: hsl(var(--background));
   --el-bg-color-page: hsl(var(--background-deep));
@@ -34,13 +40,14 @@
   --el-fill-color-extra-light: hsl(var(--accent));
   --el-fill-color-dark: hsl(var(--background));
   --el-fill-color-darker: hsl(var(--background));
-  --el-color-primary: hsl(var(--primary));
-  --el-color-primary-light-3: hsl(212 100% 58%);
-  --el-color-primary-light-5: hsl(212 100% 69%);
-  --el-color-primary-light-7: hsl(212 100% 82%);
-  --el-color-primary-light-8: hsl(212 100% 88%);
-  --el-color-primary-light-9: hsl(212 100% 95%);
-  --el-color-primary-dark-2: hsl(var(--primary-strong));
+  --el-color-primary: hsl(var(--theme-primary));
+  --el-color-primary-rgb: var(--theme-primary-rgb);
+  --el-color-primary-light-3: color-mix(in srgb, hsl(var(--theme-primary)) 70%, white);
+  --el-color-primary-light-5: color-mix(in srgb, hsl(var(--theme-primary)) 50%, white);
+  --el-color-primary-light-7: color-mix(in srgb, hsl(var(--theme-primary)) 30%, white);
+  --el-color-primary-light-8: color-mix(in srgb, hsl(var(--theme-primary)) 22%, white);
+  --el-color-primary-light-9: color-mix(in srgb, hsl(var(--theme-primary)) 12%, white);
+  --el-color-primary-dark-2: color-mix(in srgb, hsl(var(--theme-primary)) 82%, black);
   --el-color-success: hsl(var(--success));
   --el-color-warning: hsl(var(--warning));
   --el-color-danger: hsl(var(--destructive));
@@ -52,6 +59,96 @@
   --el-mask-color: hsl(var(--overlay));
 }
 
+.light[data-theme='default'],
+.dark[data-theme='default'],
+[data-theme='default'] .light,
+[data-theme='default'] .dark,
+[data-theme='default'] {
+  --primary: 212 100% 45%;
+  --theme-primary: 212 100% 45%;
+  --theme-primary-rgb: 22, 119, 255;
+}
+
+.light[data-theme='violet'],
+.dark[data-theme='violet'],
+[data-theme='violet'] .light,
+[data-theme='violet'] .dark,
+[data-theme='violet'] {
+  --primary: 262.1 83.3% 57.8%;
+  --theme-primary: 262.1 83.3% 57.8%;
+  --theme-primary-rgb: 124, 58, 237;
+}
+
+.light[data-theme='pink'],
+.dark[data-theme='pink'],
+[data-theme='pink'] .light,
+[data-theme='pink'] .dark,
+[data-theme='pink'] {
+  --primary: 346.8 77.2% 49.8%;
+  --theme-primary: 346.8 77.2% 49.8%;
+  --theme-primary-rgb: 219, 39, 119;
+}
+
+.light[data-theme='rose'],
+.dark[data-theme='rose'],
+[data-theme='rose'] .light,
+[data-theme='rose'] .dark,
+[data-theme='rose'] {
+  --primary: 346.8 77.2% 49.8%;
+  --theme-primary: 346.8 77.2% 49.8%;
+  --theme-primary-rgb: 225, 29, 72;
+}
+
+.light[data-theme='sky-blue'],
+.dark[data-theme='sky-blue'],
+[data-theme='sky-blue'] .light,
+[data-theme='sky-blue'] .dark,
+[data-theme='sky-blue'] {
+  --primary: 221.2 83.2% 53.3%;
+  --theme-primary: 221.2 83.2% 53.3%;
+  --theme-primary-rgb: 2, 132, 199;
+}
+
+.light[data-theme='deep-blue'],
+.dark[data-theme='deep-blue'],
+[data-theme='deep-blue'] .light,
+[data-theme='deep-blue'] .dark,
+[data-theme='deep-blue'] {
+  --primary: 221.2 83.2% 53.3%;
+  --theme-primary: 221.2 83.2% 53.3%;
+  --theme-primary-rgb: 29, 78, 216;
+}
+
+.light[data-theme='green'],
+.dark[data-theme='green'],
+[data-theme='green'] .light,
+[data-theme='green'] .dark,
+[data-theme='green'] {
+  --primary: 142.1 76.2% 36.3%;
+  --theme-primary: 142.1 76.2% 36.3%;
+  --theme-primary-rgb: 22, 163, 74;
+}
+
+.light[data-theme='orange'],
+.dark[data-theme='orange'],
+[data-theme='orange'] .light,
+[data-theme='orange'] .dark,
+[data-theme='orange'] {
+  --primary: 24.6 95% 53.1%;
+  --theme-primary: 24.6 95% 53.1%;
+  --theme-primary-rgb: 234, 88, 12;
+}
+
+.light[data-theme='slate'],
+.dark[data-theme='slate'],
+[data-theme='slate'] .light,
+[data-theme='slate'] .dark,
+[data-theme='slate'] {
+  --primary: 222.2 84% 4.9%;
+  --theme-primary: 222.2 84% 4.9%;
+  --theme-primary-rgb: 71, 85, 105;
+}
+
 .dark {
   --primary-strong: 212 100% 54%;
   --primary-soft: 212 80% 16%;
@@ -60,14 +157,24 @@
   --surface-soft: 220 8% 14%;
   --shadow-soft: 0 0% 0% / 0.24;
   --shadow-strong: 0 0% 0% / 0.36;
+  --theme-primary: var(--primary);
+  --theme-primary-soft: color-mix(in srgb, hsl(var(--theme-primary)) 20%, hsl(var(--secondary)));
+  --theme-primary-strong: color-mix(in srgb, hsl(var(--theme-primary)) 78%, white);
+  --theme-surface-active: color-mix(in srgb, hsl(var(--theme-primary)) 22%, hsl(var(--secondary)));
+  --theme-surface-active-strong: color-mix(in srgb, hsl(var(--theme-primary)) 14%, hsl(var(--panel)));
 
   --el-text-color-disabled: hsl(228 10% 30%);
-  --el-color-primary-light-3: hsl(212 100% 66%);
-  --el-color-primary-light-5: hsl(212 100% 73%);
-  --el-color-primary-light-7: hsl(212 100% 80%);
-  --el-color-primary-light-8: hsl(212 100% 86%);
-  --el-color-primary-light-9: hsl(212 100% 92%);
   --el-box-shadow-light: 0 20px 60px hsl(var(--shadow-strong));
+}
+
+.light {
+  --theme-primary: var(--primary);
+  --theme-primary-soft: color-mix(in srgb, hsl(var(--theme-primary)) 10%, white);
+  --theme-primary-strong: color-mix(in srgb, hsl(var(--theme-primary)) 82%, black);
+  --primary-strong: var(--theme-primary-strong);
+  --primary-soft: var(--theme-primary-soft);
+  --theme-surface-active: var(--primary-soft);
+  --theme-surface-active-strong: color-mix(in srgb, hsl(var(--theme-primary)) 14%, white);
 }
 
 :root {

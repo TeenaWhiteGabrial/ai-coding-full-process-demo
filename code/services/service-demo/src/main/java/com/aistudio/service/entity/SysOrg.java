@@ -8,17 +8,15 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_user")
-public class SysUser {
+@TableName("sys_org")
+public class SysOrg {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String username;
-    private String password;
-    private String realName;
-    private String email;
-    private String avatar;
-    private Long orgId;
+    private Long parentId;
+    private String orgName;
+    private String orgCode;
+    private String leaderName;
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

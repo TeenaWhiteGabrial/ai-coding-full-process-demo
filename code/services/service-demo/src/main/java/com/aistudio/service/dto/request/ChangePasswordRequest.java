@@ -8,12 +8,12 @@ import lombok.Data;
 @Data
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "old password is required")
+    @NotBlank(message = "旧密码不能为空")
     @JsonAlias("oldPassword")
     private String oldPassword;
 
-    @NotBlank(message = "new password is required")
-    @Size(min = 6, message = "new password must be at least 6 characters")
+    @NotBlank(message = "新密码不能为空")
+    @Size(min = 6, message = "新密码长度不能少于 6 位")
     @JsonAlias("newPassword")
     private String newPassword;
 }

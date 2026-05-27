@@ -11,6 +11,14 @@ import java.util.List;
 public interface SysMenuMapper extends BaseMapper<SysMenu> {
 
     @Select("""
+            SELECT m.*
+            FROM sys_menu m
+            WHERE COALESCE(m.app_code, 'CONSOLE') = 'CONSOLE'
+            ORDER BY m.sort ASC, m.id ASC
+            """)
+    List<SysMenu> selectAllConsoleMenus();
+
+    @Select("""
             SELECT DISTINCT m.*
             FROM sys_menu m
             INNER JOIN sys_role_menu rm ON m.id = rm.menu_id

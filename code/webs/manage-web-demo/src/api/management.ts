@@ -12,10 +12,24 @@ export interface UserManageItem {
   realName?: string
   email?: string
   avatar?: string
+  orgId?: number
+  orgName?: string
   status: number
   roleIds: number[]
   roleCodes: string[]
   roleNames: string[]
+}
+
+export interface OrgItem {
+  id: number
+  parentId: number
+  orgName: string
+  orgCode: string
+  leaderName?: string
+  status: number
+  createdAt?: string
+  updatedAt?: string
+  children?: OrgItem[]
 }
 
 export interface MenuItem {
@@ -35,7 +49,7 @@ export interface RoleMenuTreeItem extends MenuItem {
 }
 
 export const managementApi = {
-  listUsers: (params: { page: number; size: number; keyword?: string }) =>
+  listUsers: (params: { page: number; size: number; keyword?: string; orgId?: number }) =>
     request.get('/common/user/list', { params }),
   listRoles: () => request.get('/common/user/roles'),
   createUser: (data: any) => request.post('/common/user', data),
@@ -56,4 +70,11 @@ export const managementApi = {
   createMenu: (data: any) => request.post('/common/menu', data),
   updateMenu: (id: number, data: any) => request.put(`/common/menu/${id}`, data),
   deleteMenu: (id: number) => request.delete(`/common/menu/${id}`),
+
+  orgTree: () => request.get('/common/org/tree'),
+  orgOptions: () => request.get('/common/org/options'),
+  orgDetail: (id: number) => request.get(`/common/org/${id}`),
+  createOrg: (data: any) => request.post('/common/org', data),
+  updateOrg: (id: number, data: any) => request.put(`/common/org/${id}`, data),
+  deleteOrg: (id: number) => request.delete(`/common/org/${id}`),
 }

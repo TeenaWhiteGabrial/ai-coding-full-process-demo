@@ -10,7 +10,6 @@
           <img class="site-title-icon" :src="siteLogo" alt="logo">
           <div class="site-title-copy">
             <strong>{{ siteName }}</strong>
-            <span>Management Console</span>
           </div>
         </button>
       </div>
@@ -144,6 +143,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAccessStore } from '@/stores/access'
+import { useSiteStore } from '@/stores/site'
 import { useUserStore } from '@/stores/user'
 import { useMenuStore, type ConsoleMenu } from '@/stores/menu'
 import { useTabbarStore } from '@/stores/tabbar'
@@ -153,7 +153,6 @@ import AppPreferencesDrawer from '@/components/AppPreferencesDrawer.vue'
 import AppSearchDialog from '@/components/AppSearchDialog.vue'
 import AppTabbar from '@/components/AppTabbar.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
-import { getSiteConfig } from '@/api/site'
 import { Expand, Fold } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -163,6 +162,7 @@ const userStore = useUserStore()
 const menuStore = useMenuStore()
 const tabbarStore = useTabbarStore()
 const themeStore = useThemeStore()
+const siteStore = useSiteStore()
 const userInfo = computed(() => userStore.userInfo)
 const homePath = computed(() => accessStore.homePath)
 
@@ -209,28 +209,15 @@ const breadcrumbTrail = computed(() => {
   }
   return [{ name: pageTitle.value, icon: 'Menu' }]
 })
-const siteName = ref('AI Studio')
-const siteLogo = ref(`${import.meta.env.BASE_URL}ai-studio-logo.svg`)
+const siteName = computed(() => siteStore.config.siteName || 'AI Studio')
+const siteLogo = computed(() => siteStore.resolvedLogoUrl)
 
 onMounted(async () => {
   if (menuStore.menus.length === 0) {
     await menuStore.fetchMenus()
   }
-  try {
-    const config = await getSiteConfig()
-    siteName.value = config.siteName || siteName.value
-    siteLogo.value = resolveAssetUrl(config.logoUrl)
-  } catch {
-    siteLogo.value = `${import.meta.env.BASE_URL}ai-studio-logo.svg`
-  }
+  await siteStore.fetchSiteConfig()
 })
-
-function resolveAssetUrl(url?: string) {
-  if (!url) return `${import.meta.env.BASE_URL}ai-studio-logo.svg`
-  if (/^(https?:)?\/\//.test(url)) return url
-  if (url.startsWith('/uploads/')) return url
-  return `${import.meta.env.BASE_URL}${url.replace(/^\//, '')}`
-}
 
 function filterVisibleMenus(menus: ConsoleMenu[]): ConsoleMenu[] {
   return menus
@@ -331,8 +318,8 @@ async function handleCommand(command: string) {
   display: grid;
   grid-template-columns: var(--sidebar-width, 268px) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  min-height: 76px;
+  gap: 12px;
+  min-height: 42px;
   padding: 0;
 }
 
@@ -357,7 +344,7 @@ async function handleCommand(command: string) {
 .sidebar-scroll {
   flex: 1;
   overflow: auto;
-  padding: 14px 12px 20px;
+  padding: 10px 10px 16px;
 }
 
 .sidebar-menu {
@@ -410,13 +397,13 @@ async function handleCommand(command: string) {
 
 :deep(.sidebar-menu .el-menu-item:hover),
 :deep(.sidebar-menu .el-sub-menu__title:hover) {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--foreground));
   transform: translateX(2px);
 }
 
 :deep(.sidebar-menu .el-menu-item.is-active) {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--primary));
   box-shadow: var(--ai-glow-ring);
 }
@@ -429,7 +416,7 @@ async function handleCommand(command: string) {
 .sidebar-footer {
   display: grid;
   gap: 10px;
-  padding: 0 18px 18px;
+  padding: 0 14px 14px;
 }
 
 .sidebar-toggle-btn {
@@ -471,15 +458,15 @@ async function handleCommand(command: string) {
   display: flex;
   align-items: center;
   min-width: 0;
-  min-height: 76px;
-  padding: 16px 18px 16px 26px;
+  min-height: 42px;
+  padding: 6px 14px 6px 18px;
 }
 
 .header-center {
   min-width: 0;
   display: grid;
-  gap: 10px;
-  padding: 16px 0;
+  gap: 4px;
+  padding: 6px 0;
 }
 
 .layout-shell.layout-inset .header-brand {
@@ -497,11 +484,11 @@ async function handleCommand(command: string) {
 }
 
 .layout-shell.layout-top-mix .header {
-  min-height: 88px;
+  min-height: 48px;
 }
 
 .layout-shell.layout-top-mix .header-brand {
-  min-height: 88px;
+  min-height: 48px;
 }
 
 .header-left {
@@ -514,10 +501,10 @@ async function handleCommand(command: string) {
 .site-title {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -534,47 +521,42 @@ async function handleCommand(command: string) {
 }
 
 .site-title-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   object-fit: cover;
   flex: 0 0 auto;
 }
 
 .site-title-copy {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
   text-align: left;
 }
 
 .site-title-copy strong {
   color: hsl(var(--foreground));
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-}
-
-.site-title-copy span {
-  color: hsl(var(--muted-foreground));
-  font-size: 12px;
 }
 
 .top-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 8px;
   overflow: auto hidden;
 }
 
 .top-nav-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 14px;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
@@ -586,13 +568,13 @@ async function handleCommand(command: string) {
 }
 
 .top-nav-item:hover {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--foreground));
 }
 
 .top-nav-item.active {
-  background: hsl(var(--card));
-  border-color: hsl(var(--border));
+  background: hsl(var(--theme-surface-active-strong));
+  border-color: hsl(var(--primary) / 0.16);
   color: hsl(var(--primary));
   box-shadow: var(--ai-glow-xs);
 }
@@ -600,20 +582,20 @@ async function handleCommand(command: string) {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-right: 26px;
+  gap: 10px;
+  padding-right: 18px;
 }
 
 .page-intro {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .page-breadcrumb {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: hsl(var(--muted-foreground));
   font-size: 14px;
   font-weight: 600;
@@ -634,7 +616,7 @@ async function handleCommand(command: string) {
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: hsl(var(--foreground));
 }
@@ -642,38 +624,38 @@ async function handleCommand(command: string) {
 .user-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
-  border-radius: 16px;
+  border-radius: 12px;
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease;
 }
 
 .user-trigger:hover {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   border-color: hsl(var(--primary) / 0.18);
 }
 
 .user-copy {
   display: grid;
   gap: 2px;
-  padding-right: 8px;
+  padding-right: 6px;
   text-align: left;
 }
 
 .user-copy strong {
   color: hsl(var(--foreground));
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .user-copy span {
   color: hsl(var(--muted-foreground));
-  font-size: 12px;
+  font-size: 11px;
 }
 
 :deep(.el-avatar) {

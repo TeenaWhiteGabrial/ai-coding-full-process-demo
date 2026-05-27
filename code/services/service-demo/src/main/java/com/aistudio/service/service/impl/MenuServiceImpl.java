@@ -26,13 +26,19 @@ import java.util.stream.Collectors;
 public class MenuServiceImpl implements MenuService {
 
     private static final String APP_CODE_CONSOLE = "CONSOLE";
+    private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
 
     private final SysMenuMapper menuMapper;
+    private final com.aistudio.service.mapper.SysRoleMapper roleMapper;
     private final SysRoleMenuMapper roleMenuMapper;
 
     @Override
     public List<MenuTreeVO> getMenuTree(Long userId) {
-        List<SysMenu> menus = menuMapper.selectByUserId(userId);
+        boolean isSuperAdmin = roleMapper.selectByUserId(userId).stream()
+                .anyMatch(role -> ROLE_SUPER_ADMIN.equals(role.getRoleCode()));
+        List<SysMenu> menus = isSuperAdmin
+                ? menuMapper.selectAllConsoleMenus()
+                : menuMapper.selectByUserId(userId);
         List<MenuTreeVO> voList = new ArrayList<>();
         for (SysMenu menu : menus) {
             MenuTreeVO vo = new MenuTreeVO();
@@ -90,7 +96,7 @@ public class MenuServiceImpl implements MenuService {
     public SysMenu getMenuById(Long id) {
         SysMenu menu = menuMapper.selectById(id);
         if (menu == null) {
-            throw new BusinessException(404, "menu not found");
+            throw new BusinessException(404, "菜单不存在");
         }
         return menu;
     }
@@ -126,13 +132,23 @@ public class MenuServiceImpl implements MenuService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
                         .eq(SysMenu::getParentId, id));
         if (childCount > 0) {
-            throw new BusinessException(400, "please delete child menus first");
+            throw new BusinessException(400, "请先删除子菜单");
         }
-        long roleCount = roleMenuMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
-                        .eq(SysRoleMenu::getMenuId, id));
+        List<Long> assignedRoleIds = roleMenuMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
+                                .eq(SysRoleMenu::getMenuId, id))
+                .stream()
+                .map(SysRoleMenu::getRoleId)
+                .distinct()
+                .toList();
+        long roleCount = assignedRoleIds.isEmpty()
+                ? 0
+                : roleMapper.selectBatchIds(assignedRoleIds).stream()
+                        .filter(java.util.Objects::nonNull)
+                        .filter(role -> !ROLE_SUPER_ADMIN.equals(role.getRoleCode()))
+                        .count();
         if (roleCount > 0) {
-            throw new BusinessException(400, "menu is assigned to roles and can not be deleted");
+            throw new BusinessException(400, "菜单已分配给角色，无法删除");
         }
         menuMapper.deleteById(id);
     }

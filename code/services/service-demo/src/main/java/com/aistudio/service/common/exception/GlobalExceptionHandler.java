@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidationException(MethodArgumentNotValidException exception) {
         FieldError fieldError = exception.getBindingResult().getFieldError();
-        String message = fieldError == null ? "invalid request" : fieldError.getDefaultMessage();
+        String message = fieldError == null ? "请求参数不合法" : fieldError.getDefaultMessage();
         return Result.error(400, message);
     }
 
@@ -30,11 +30,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Result<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
-        return Result.error(400, "request body is invalid");
+        return Result.error(400, "请求体格式不正确");
     }
 
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception exception) {
-        return Result.error(500, exception.getMessage() == null ? "internal server error" : exception.getMessage());
+        return Result.error(500, exception.getMessage() == null ? "服务器内部错误" : exception.getMessage());
     }
 }

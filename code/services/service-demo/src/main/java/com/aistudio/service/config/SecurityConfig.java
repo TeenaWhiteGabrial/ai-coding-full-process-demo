@@ -79,14 +79,14 @@ public class SecurityConfig {
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                             response.getWriter().write(objectMapper.writeValueAsString(
-                                    Result.error(401, "Unauthorized, please login first")));
+                                    Result.error(401, "未登录或登录已失效，请先登录")));
                         })
                         .accessDeniedHandler((request, response, exception) -> {
                             response.setStatus(403);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                             response.getWriter().write(objectMapper.writeValueAsString(
-                                    Result.error(403, "Forbidden")));
+                                    Result.error(403, "无权访问该资源")));
                         }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authenticationProvider(authenticationProvider());

@@ -254,9 +254,9 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 18px 0;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 14px 0;
   border-bottom: 1px solid hsl(var(--border) / 0.72);
   background:
     linear-gradient(180deg, hsl(var(--header) / 0.7), hsl(var(--header) / 0.45));
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   height: 100%;
   overflow: auto hidden;
-  padding-right: 14px;
+  padding-right: 10px;
 }
 
 .tabbar-item {
@@ -281,9 +281,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
-  height: 38px;
-  margin-right: -12px;
-  padding: 0 18px 0 16px;
+  height: 28px;
+  margin-right: -10px;
+  padding: 0 14px 0 12px;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   user-select: none;
@@ -327,14 +327,14 @@ onBeforeUnmount(() => {
 
 .tabbar-background {
   position: absolute;
-  inset: 0 8px 0 8px;
+  inset: 0 6px 0 6px;
   z-index: -1;
   opacity: 0.9;
 }
 
 .tabbar-background-content {
   height: 100%;
-  border-radius: 12px 12px 0 0;
+  border-radius: 10px 10px 0 0;
   background: transparent;
   transition:
     background-color 0.18s ease,
@@ -345,30 +345,33 @@ onBeforeUnmount(() => {
 .tabbar-curve {
   position: absolute;
   bottom: 0;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: transparent;
   transition: background-color 0.18s ease;
 }
 
 .tabbar-curve-left {
   left: 0;
-  clip-path: path('M 8 8 L 8 0 Q 8 8 0 8 Z');
+  clip-path: path('M 6 6 L 6 0 Q 6 6 0 6 Z');
 }
 
 .tabbar-curve-right {
   right: 0;
-  clip-path: path('M 0 0 L 0 8 Q 8 8 0 0 Z');
+  clip-path: path('M 0 0 L 0 6 Q 6 6 0 0 Z');
 }
 
 .tabbar-item:hover:not(.active) .tabbar-background-content {
-  background: hsl(var(--card) / 0.84);
+  background: hsl(var(--theme-surface-active));
   transform: translateY(1px);
 }
 
 .tabbar-item.active .tabbar-background-content {
-  background:
-    linear-gradient(180deg, hsl(var(--card)), hsl(var(--panel)));
+  background: linear-gradient(
+    180deg,
+    hsl(var(--theme-surface-active-strong)),
+    hsl(var(--theme-surface-active))
+  );
   box-shadow:
     inset 0 1px 0 hsl(var(--primary) / 0.18),
     0 10px 24px hsl(var(--shadow-soft));
@@ -376,7 +379,7 @@ onBeforeUnmount(() => {
 
 .tabbar-item.active .tabbar-curve-left,
 .tabbar-item.active .tabbar-curve-right {
-  background: hsl(var(--panel));
+  background: hsl(var(--theme-surface-active));
 }
 
 .tabbar-main {
@@ -384,9 +387,9 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding-right: 20px;
+  padding-right: 16px;
 }
 
 .tabbar-pin {
@@ -396,7 +399,7 @@ onBeforeUnmount(() => {
 .tabbar-title {
   max-width: 156px;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -405,13 +408,13 @@ onBeforeUnmount(() => {
 .tabbar-close {
   position: absolute;
   top: 50%;
-  right: 18px;
+  right: 14px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: none;
   border-radius: 999px;
   background: transparent;
@@ -424,7 +427,7 @@ onBeforeUnmount(() => {
 }
 
 .tabbar-close:hover {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--foreground));
 }
 
@@ -432,12 +435,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
 .tabbar-tool {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -454,8 +457,8 @@ onBeforeUnmount(() => {
 
 .tabbar-tool:hover {
   border-color: hsl(var(--primary) / 0.18);
-  background: hsl(var(--secondary));
-  color: hsl(var(--foreground));
+  background: hsl(var(--theme-surface-active));
+  color: hsl(var(--primary));
 }
 
 .tabbar-context-menu {
@@ -482,7 +485,7 @@ onBeforeUnmount(() => {
 }
 
 .tabbar-context-menu button:hover:not(:disabled) {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--primary));
 }
 
@@ -501,7 +504,7 @@ onBeforeUnmount(() => {
 }
 
 :deep(.el-dropdown-menu__item:hover) {
-  background: hsl(var(--secondary));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--primary));
 }
 
@@ -511,7 +514,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 960px) {
   .tabbar-shell {
-    padding: 8px 14px 0;
+    padding: 6px 12px 0;
   }
 
   .tabbar-title {

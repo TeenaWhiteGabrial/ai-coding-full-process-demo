@@ -1,17 +1,21 @@
 <template>
-  <section class="system-page">
-    <div class="system-card">
-      <span class="system-code">404</span>
-      <h1>页面不存在或暂未接入控制台</h1>
-      <p>如果这个页面原本应该存在，通常是菜单路径还没有和前端页面映射起来。</p>
-      <div class="system-actions">
-        <el-button type="primary" @click="router.push(accessStore.homePath)">回到首页</el-button>
-      </div>
+  <section class="fallback-page">
+    <Icon404 class="fallback-illustration" />
+
+    <div class="fallback-copy">
+      <div class="fallback-code">404</div>
+      <h1>哎呀！未找到页面</h1>
+      <p>抱歉，我们无法找到你要访问的页面。它可能已经被移除，或者链接地址填写有误。</p>
+      <el-button type="primary" size="large" @click="router.push(accessStore.homePath)">
+        回到首页
+      </el-button>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import Icon404 from './components/Icon404.vue'
+
 import { useAccessStore } from '@/stores/access'
 import { useRouter } from 'vue-router'
 
@@ -20,54 +24,63 @@ const router = useRouter()
 </script>
 
 <style scoped>
-.system-page {
+.fallback-page {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at bottom left, hsl(var(--primary) / 0.12), transparent 32%),
-    hsl(var(--background-deep));
-}
-
-.system-card {
-  width: min(100%, 620px);
-  padding: 40px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 32px;
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.95), hsl(var(--card) / 0.82));
-  box-shadow: 0 32px 80px hsl(var(--shadow-soft));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
   text-align: center;
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.1), transparent 28%),
+    hsl(var(--background));
 }
 
-.system-code {
-  display: inline-block;
+.fallback-illustration {
+  width: min(100%, 520px);
+  height: auto;
+}
+
+.fallback-copy {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 560px);
+}
+
+.fallback-code {
   color: hsl(var(--primary));
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 700;
 }
 
-.system-card h1 {
-  margin: 16px 0 12px;
-  font-size: clamp(28px, 4vw, 38px);
+.fallback-copy h1 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: clamp(30px, 4vw, 38px);
+  line-height: 1.2;
 }
 
-.system-card p {
+.fallback-copy p {
   margin: 0 auto;
-  max-width: 30rem;
   color: hsl(var(--muted-foreground));
+  max-width: 36rem;
   line-height: 1.8;
 }
 
-.system-actions {
-  margin-top: 28px;
-}
-
 @media (max-width: 640px) {
-  .system-card {
-    padding: 28px 22px;
+  .fallback-page {
+    padding: 24px 16px;
+  }
+
+  .fallback-illustration {
+    width: min(100%, 360px);
+  }
+
+  .fallback-code {
+    font-size: 56px;
   }
 }
 </style>

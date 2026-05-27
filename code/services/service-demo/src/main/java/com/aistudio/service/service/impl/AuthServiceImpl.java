@@ -35,10 +35,10 @@ public class AuthServiceImpl implements AuthService {
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
         if (user == null || !matchesPassword(plainPassword, user.getPassword())) {
-            throw new BusinessException(401, "username or password is incorrect");
+            throw new BusinessException(401, "用户名或密码错误");
         }
         if (user.getStatus() != null && user.getStatus() == 0) {
-            throw new BusinessException(403, "user is disabled");
+            throw new BusinessException(403, "用户已被禁用");
         }
 
         List<String> roles = roleMapper.selectByUserId(user.getId()).stream()
@@ -61,10 +61,10 @@ public class AuthServiceImpl implements AuthService {
         SysUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
         if (user == null || !matchesPassword(plainPassword, user.getPassword())) {
-            throw new BusinessException(401, "username or password is incorrect");
+            throw new BusinessException(401, "用户名或密码错误");
         }
         if (user.getStatus() != null && user.getStatus() == 0) {
-            throw new BusinessException(403, "user is disabled");
+            throw new BusinessException(403, "用户已被禁用");
         }
         return TokenResponse.builder()
                 .token(jwtTokenProvider.generateToken(user.getId(), user.getUsername()))
@@ -75,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
     public UserInfoResponse getUserInfo(Long userId) {
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException(404, "user not found");
+            throw new BusinessException(404, "用户不存在");
         }
         List<String> roles = roleMapper.selectByUserId(userId).stream()
                 .map(SysRole::getRoleCode)

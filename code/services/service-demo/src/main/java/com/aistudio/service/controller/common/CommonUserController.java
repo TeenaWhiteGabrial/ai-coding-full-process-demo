@@ -41,8 +41,9 @@ public class CommonUserController {
     public Result<PageResult<UserManageVO>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String keyword) {
-        return Result.success(userService.listUsers(page, size, keyword));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long orgId) {
+        return Result.success(userService.listUsers(page, size, keyword, orgId));
     }
 
     @Operation(summary = "Role list")

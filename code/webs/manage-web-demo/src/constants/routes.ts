@@ -49,6 +49,14 @@ const consoleRouteDefinitions: ConsoleRouteDefinition[] = [
     component: () => import('@/views/Menus.vue'),
   },
   {
+    componentKey: 'Orgs',
+    fullPath: '/orgs',
+    name: 'ConsoleOrgs',
+    routePath: 'orgs',
+    title: '组织管理',
+    component: () => import('@/views/Orgs.vue'),
+  },
+  {
     componentKey: 'SiteManage',
     fullPath: '/site',
     name: 'ConsoleSiteManage',

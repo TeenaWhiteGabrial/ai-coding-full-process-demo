@@ -7,13 +7,13 @@ import lombok.Data;
 @Data
 public class UpdateProfileRequest {
 
-    @Size(max = 50, message = "real name must not exceed 50 characters")
+    @Size(max = 50, message = "姓名长度不能超过 50 个字符")
     private String realName;
 
-    @Email(message = "email is invalid")
-    @Size(max = 100, message = "email must not exceed 100 characters")
+    @Email(message = "邮箱格式不正确")
+    @Size(max = 100, message = "邮箱长度不能超过 100 个字符")
     private String email;
 
-    @Size(max = 500, message = "avatar url must not exceed 500 characters")
+    @Size(max = 500, message = "头像地址长度不能超过 500 个字符")
     private String avatar;
 }

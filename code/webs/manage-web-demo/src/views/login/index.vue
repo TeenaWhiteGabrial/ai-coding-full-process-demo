@@ -1,32 +1,17 @@
 <template>
   <div class="login-page">
+    <img
+      class="login-background"
+      :src="backgroundIllustration"
+      alt="illustration background"
+    >
+    <div class="login-overlay"></div>
+
     <div class="login-toolbar">
       <ThemeToggle />
     </div>
 
-    <div class="login-grid">
-      <section class="hero-panel">
-        <div class="hero-badge">Vue 3 + Element Plus</div>
-        <h1 class="hero-title">AI Studio 管理后台</h1>
-        <p class="hero-copy">
-          这一版界面已经切到更接近 vben 的视觉语言，但登录、菜单、上传、站点设置和用户管理逻辑仍然沿用当前项目。
-        </p>
-        <div class="hero-points">
-          <div class="hero-point">
-            <span class="point-dot"></span>
-            <span>业务接口与现有鉴权流程保持不变</span>
-          </div>
-          <div class="hero-point">
-            <span class="point-dot"></span>
-            <span>菜单、角色、用户等后台能力直接可用</span>
-          </div>
-          <div class="hero-point">
-            <span class="point-dot"></span>
-            <span>Element Plus 页面风格向 vben web-ele 靠拢</span>
-          </div>
-        </div>
-      </section>
-
+    <div class="login-shell">
       <el-card class="login-card">
         <div class="login-head">
           <span class="login-kicker">Console Access</span>
@@ -56,6 +41,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import type { FormInstance } from 'element-plus'
+import backgroundIllustration from '@/assets/login-background.jpg'
 
 const route = useRoute()
 const router = useRouter()
@@ -85,117 +71,71 @@ async function handleLogin() {
 
 <style scoped>
 .login-page {
-  min-height: 100vh;
+  height: 100vh;
   position: relative;
+  overflow: hidden;
   display: grid;
-  place-items: center;
-  padding: 28px;
+  align-items: center;
+  padding: 32px;
+  background: hsl(var(--background-deep));
+}
+
+.login-background,
+.login-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.login-background {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.94) contrast(1.01);
+}
+
+.login-overlay {
   background:
-    radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 28%),
-    radial-gradient(circle at bottom right, hsl(var(--primary) / 0.1), transparent 24%),
-    hsl(var(--background-deep));
+    linear-gradient(90deg, hsl(210 22% 10% / 0.08) 0%, hsl(210 22% 10% / 0.04) 36%, hsl(210 22% 10% / 0.28) 100%),
+    linear-gradient(180deg, hsl(0 0% 100% / 0.02), hsl(0 0% 0% / 0.06));
 }
 
 .login-toolbar {
   position: absolute;
   top: 24px;
   right: 24px;
+  z-index: 2;
 }
 
-.login-grid {
-  display: grid;
-  grid-template-columns: minmax(340px, 580px) minmax(320px, 440px);
-  gap: 26px;
-  align-items: stretch;
-  width: min(1120px, 100%);
-}
-
-.hero-panel {
+.login-shell {
   position: relative;
-  overflow: hidden;
-  padding: 42px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 32px;
-  background:
-    linear-gradient(135deg, hsl(var(--sidebar)) 0%, hsl(var(--secondary)) 100%);
-  color: hsl(var(--foreground));
-  box-shadow: 0 30px 70px hsl(var(--shadow-strong));
-}
-
-.hero-panel::after {
-  position: absolute;
-  inset: auto -80px -100px auto;
-  width: 260px;
-  height: 260px;
-  border-radius: 999px;
-  background: radial-gradient(circle, hsl(var(--primary) / 0.18), transparent 66%);
-  content: '';
-}
-
-.hero-badge {
-  display: inline-flex;
-  padding: 8px 14px;
-  margin-bottom: 22px;
-  background: hsl(var(--primary-soft));
-  border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: clamp(36px, 5vw, 56px);
-  line-height: 1.02;
-}
-
-.hero-copy {
-  margin: 18px 0 28px;
-  max-width: 32rem;
-  color: hsl(var(--muted-foreground));
-  font-size: 16px;
-  line-height: 1.75;
-}
-
-.hero-points {
-  display: grid;
-  gap: 14px;
-}
-
-.hero-point {
+  z-index: 1;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: hsl(var(--card) / 0.7);
-  border: 1px solid hsl(var(--border));
-  border-radius: 18px;
-  backdrop-filter: blur(10px);
-}
-
-.point-dot {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.12);
+  justify-content: flex-end;
+  width: min(1240px, 100%);
+  height: 100%;
+  margin: 0 auto;
 }
 
 .login-card {
+  width: min(100%, 430px);
+  border: 1px solid hsl(var(--border) / 0.75);
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.95), hsl(var(--secondary) / 0.9));
+  box-shadow:
+    0 28px 80px hsl(220 35% 10% / 0.24),
+    inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  backdrop-filter: blur(20px);
   align-self: center;
-  border-radius: 28px;
-  box-shadow: 0 24px 64px hsl(var(--shadow-soft));
 }
 
 .login-card :deep(.el-card__body) {
-  padding: 34px 32px 30px;
+  padding: 30px 30px 24px;
 }
 
 .login-head {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .login-kicker {
@@ -204,12 +144,12 @@ async function handleLogin() {
   color: hsl(var(--primary));
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .login-head h2 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 30px;
   line-height: 1.08;
 }
@@ -222,35 +162,39 @@ async function handleLogin() {
 
 .login-form {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .submit-btn {
   width: 100%;
-  margin-top: 8px;
+  min-height: 48px;
+  margin-top: 6px;
   border-radius: 16px;
   font-weight: 700;
+  box-shadow: 0 14px 28px hsl(var(--primary) / 0.2);
 }
 
-@media (max-width: 960px) {
-  .login-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .login-toolbar {
-    top: 16px;
-    right: 16px;
-  }
-}
-
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .login-page {
     padding: 16px;
   }
 
-  .hero-panel,
+  .login-shell {
+    justify-content: center;
+  }
+
+  .login-overlay {
+    background:
+      linear-gradient(180deg, hsl(210 22% 10% / 0.2), hsl(210 22% 10% / 0.34)),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.03), hsl(0 0% 0% / 0.08));
+  }
+
   .login-card :deep(.el-card__body) {
-    padding: 24px;
+    padding: 24px 22px 20px;
+  }
+
+  .login-head h2 {
+    font-size: 28px;
   }
 }
 </style>

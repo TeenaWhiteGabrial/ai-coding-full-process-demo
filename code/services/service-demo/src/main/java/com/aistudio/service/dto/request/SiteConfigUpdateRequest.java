@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class SiteConfigUpdateRequest {
 
-    @NotBlank(message = "site name can not be blank")
+    @NotBlank(message = "站点名称不能为空")
     private String siteName;
 
     private String siteDescription;

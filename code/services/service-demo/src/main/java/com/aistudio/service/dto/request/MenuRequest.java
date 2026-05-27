@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class MenuRequest {
 
-    @NotBlank(message = "menu name can not be blank")
+    @NotBlank(message = "菜单名称不能为空")
     private String name;
 
     private Long parentId;

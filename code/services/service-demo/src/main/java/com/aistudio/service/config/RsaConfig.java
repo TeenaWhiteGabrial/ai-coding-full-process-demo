@@ -35,7 +35,7 @@ public class RsaConfig {
             return new String(decryptedBytes);
         } catch (Exception exception) {
             log.error("RSA decrypt failed", exception);
-            throw new IllegalStateException("password decrypt failed");
+            throw new IllegalStateException("密码解密失败");
         }
     }
 }

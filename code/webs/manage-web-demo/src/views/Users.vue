@@ -7,7 +7,16 @@
 
       <div class="page-toolbar">
         <el-input v-model="keyword" placeholder="搜索账号 / 姓名 / 邮箱" clearable @keyup.enter="loadData" />
-        <el-button @click="loadData">查询</el-button>
+        <el-tree-select
+          v-model="selectedOrgId"
+          :data="orgTreeOptions"
+          check-strictly
+          clearable
+          node-key="id"
+          :props="{ label: 'orgName', children: 'children' }"
+          placeholder="按组织筛选"
+        />
+        <el-button type="primary" class="query-btn" @click="loadData">查询</el-button>
       </div>
 
       <div class="table-shell">
@@ -16,6 +25,11 @@
             <el-table-column prop="username" label="账号" min-width="140" />
             <el-table-column prop="realName" label="姓名" min-width="120" />
             <el-table-column prop="email" label="邮箱" min-width="200" />
+            <el-table-column prop="orgName" label="组织" min-width="180">
+              <template #default="{ row }">
+                {{ row.orgName || '-' }}
+              </template>
+            </el-table-column>
             <el-table-column label="角色" min-width="200">
               <template #default="{ row }">
                 <el-tag v-for="name in row.roleNames" :key="name" class="tag-gap">{{ name }}</el-tag>
@@ -88,6 +102,19 @@
               <el-input v-model="form.email" placeholder="请输入邮箱" />
             </el-form-item>
 
+            <el-form-item label="所属组织" prop="orgId">
+              <el-tree-select
+                v-model="form.orgId"
+                :data="orgTreeOptions"
+                check-strictly
+                clearable
+                node-key="id"
+                :props="{ label: 'orgName', children: 'children' }"
+                style="width: 100%"
+                placeholder="请选择所属组织"
+              />
+            </el-form-item>
+
             <el-form-item label="头像" prop="avatar" class="span-2">
               <ImageUploadField
                 v-model="form.avatar"
@@ -158,7 +185,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { managementApi, type RoleItem, type UserManageItem } from '@/api'
+import { managementApi, type OrgItem, type RoleItem, type UserManageItem } from '@/api'
 import DialogHero from '@/components/DialogHero.vue'
 import ImageUploadField from '@/components/ImageUploadField.vue'
 import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
@@ -170,18 +197,21 @@ const total = ref(0)
 const pageLoading = ref(false)
 const records = ref<UserManageItem[]>([])
 const roleOptions = ref<RoleItem[]>([])
+const orgOptions = ref<OrgItem[]>([])
 const dialogVisible = ref(false)
 const resetDialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const resetTarget = ref<UserManageItem | null>(null)
 const formRef = ref<FormInstance>()
 const resetFormRef = ref<FormInstance>()
+const selectedOrgId = ref<number | undefined>()
 const form = reactive({
   username: '',
   password: '',
   realName: '',
   email: '',
   avatar: '',
+  orgId: undefined as number | undefined,
   roleIds: [] as number[],
   status: 1,
 })
@@ -260,15 +290,27 @@ const enabled = computed({
   },
 })
 
+const orgTreeOptions = computed(() => orgOptions.value.map(markOrgLabel))
+
 async function loadRoles() {
   const res = await managementApi.listRoles() as any
   roleOptions.value = res.data || []
 }
 
+async function loadOrgs() {
+  const res = await managementApi.orgOptions() as any
+  orgOptions.value = res.data || []
+}
+
 async function loadData() {
   pageLoading.value = true
   try {
-    const res = await managementApi.listUsers({ page: page.value, size: size.value, keyword: keyword.value || undefined }) as any
+    const res = await managementApi.listUsers({
+      page: page.value,
+      size: size.value,
+      keyword: keyword.value || undefined,
+      orgId: selectedOrgId.value,
+    }) as any
     total.value = res.data?.total || 0
     records.value = res.data?.records || []
   } finally {
@@ -283,6 +325,7 @@ function resetFormData() {
   form.realName = ''
   form.email = ''
   form.avatar = ''
+  form.orgId = undefined
   form.roleIds = []
   form.status = 1
 }
@@ -301,6 +344,7 @@ function openEdit(row: UserManageItem) {
   form.realName = row.realName || ''
   form.email = row.email || ''
   form.avatar = row.avatar || ''
+  form.orgId = row.orgId
   form.roleIds = [...(row.roleIds || [])]
   form.status = row.status
   dialogVisible.value = true
@@ -313,6 +357,7 @@ async function submit() {
       realName: form.realName,
       email: form.email,
       avatar: form.avatar,
+      orgId: form.orgId,
       roleIds: form.roleIds,
       status: form.status,
     })
@@ -324,6 +369,7 @@ async function submit() {
       realName: form.realName,
       email: form.email,
       avatar: form.avatar,
+      orgId: form.orgId,
       roleIds: form.roleIds,
       status: form.status,
     })
@@ -359,10 +405,18 @@ function handlePageChange(nextPage: number) {
   loadData()
 }
 
+function markOrgLabel(item: OrgItem): OrgItem {
+  return {
+    ...item,
+    orgName: item.status === 1 ? item.orgName : `${item.orgName}（禁用）`,
+    children: (item.children || []).map(markOrgLabel),
+  }
+}
+
 onMounted(async () => {
   pageLoading.value = true
   try {
-    await loadRoles()
+    await Promise.all([loadRoles(), loadOrgs()])
     await loadData()
   } finally {
     pageLoading.value = false
@@ -391,9 +445,20 @@ onMounted(async () => {
 
 .page-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 320px) auto;
+  grid-template-columns: minmax(0, 320px) minmax(0, 260px) auto;
   gap: 12px;
+  align-items: center;
   margin-bottom: 18px;
+}
+
+.page-toolbar :deep(.el-input),
+.page-toolbar :deep(.el-tree-select) {
+  width: 100%;
+}
+
+.query-btn {
+  min-width: 96px;
+  justify-self: start;
 }
 
 .page-pager {
@@ -426,6 +491,10 @@ onMounted(async () => {
 @media (max-width: 960px) {
   .page-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .query-btn {
+    width: 100%;
   }
 }
 </style>

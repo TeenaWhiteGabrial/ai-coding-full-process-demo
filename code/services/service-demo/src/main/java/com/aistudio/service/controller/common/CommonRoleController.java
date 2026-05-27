@@ -50,7 +50,7 @@ public class CommonRoleController {
     public Result<Long> create(@jakarta.validation.Valid @RequestBody RoleCreateRequest request) {
         long count = roleMapper.selectCount(new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleCode, request.getRoleCode()));
         if (count > 0) {
-            throw new BusinessException(400, "role code already exists");
+            throw new BusinessException(400, "角色编码已存在");
         }
         SysRole role = new SysRole();
         role.setRoleCode(request.getRoleCode().trim());
@@ -123,10 +123,10 @@ public class CommonRoleController {
     private void ensureEditableRole(Long id) {
         SysRole role = roleMapper.selectById(id);
         if (role == null) {
-            throw new BusinessException(404, "role not found");
+            throw new BusinessException(404, "角色不存在");
         }
         if ("SUPER_ADMIN".equals(role.getRoleCode())) {
-            throw new BusinessException(403, "super admin role is not editable");
+            throw new BusinessException(403, "超级管理员角色不允许修改");
         }
     }
 }
