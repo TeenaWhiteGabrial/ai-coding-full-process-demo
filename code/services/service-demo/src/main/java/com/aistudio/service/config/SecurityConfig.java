@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/common/auth/public-key",
+                                "/common/auth/captcha",
                                 "/common/auth/login",
                                 "/common/auth/token",
                                 "/doc.html",

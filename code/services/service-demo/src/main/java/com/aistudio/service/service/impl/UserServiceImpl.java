@@ -29,12 +29,16 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.time.format.DateTimeFormatter;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    private static final String BUILTIN_ADMIN_USERNAME = "admin";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final SysUserMapper userMapper;
     private final SysOrgMapper orgMapper;
@@ -52,7 +56,9 @@ public class UserServiceImpl implements UserService {
                     .or()
                     .like(SysUser::getRealName, keyword)
                     .or()
-                    .like(SysUser::getEmail, keyword));
+                    .like(SysUser::getEmail, keyword)
+                    .or()
+                    .like(SysUser::getPhone, keyword));
         }
         if (orgId != null) {
             wrapper.eq(SysUser::getOrgId, orgId);
@@ -90,10 +96,13 @@ public class UserServiceImpl implements UserService {
             vo.setUsername(user.getUsername());
             vo.setRealName(user.getRealName());
             vo.setEmail(user.getEmail());
+            vo.setPhone(user.getPhone());
             vo.setAvatar(user.getAvatar());
             vo.setOrgId(user.getOrgId());
             vo.setOrgName(org == null ? null : org.getOrgName());
             vo.setStatus(user.getStatus());
+            vo.setFailedLoginCount(user.getFailedLoginCount());
+            vo.setLockedUntil(user.getLockedUntil() == null ? null : user.getLockedUntil().format(DATE_TIME_FORMATTER));
             vo.setCreatedAt(user.getCreatedAt());
             vo.setUpdatedAt(user.getUpdatedAt());
             vo.setRoleIds(roleIds);
@@ -118,6 +127,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRealName(normalize(request.getRealName()));
         user.setEmail(normalize(request.getEmail()));
+        user.setPhone(normalize(request.getPhone()));
         user.setAvatar(normalize(request.getAvatar()));
         user.setOrgId(resolveOrgId(request.getOrgId()));
         user.setStatus(request.getStatus() == null ? 1 : request.getStatus());
@@ -131,11 +141,15 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void updateUser(Long id, UserUpdateRequest request) {
         SysUser user = requireUser(id);
+        ensureBuiltinAdminMutable(user, "admin 账号不允许编辑");
         if (request.getRealName() != null) {
             user.setRealName(normalize(request.getRealName()));
         }
         if (request.getEmail() != null) {
             user.setEmail(normalize(request.getEmail()));
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(normalize(request.getPhone()));
         }
         if (request.getAvatar() != null) {
             user.setAvatar(normalize(request.getAvatar()));
@@ -156,7 +170,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        requireUser(id);
+        SysUser user = requireUser(id);
+        ensureBuiltinAdminMutable(user, "admin 账号不允许删除");
         userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
         userMapper.deleteById(id);
     }
@@ -165,6 +180,20 @@ public class UserServiceImpl implements UserService {
     public void resetPassword(Long id, ResetPasswordRequest request) {
         SysUser user = requireUser(id);
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setFailedLoginCount(0);
+        user.setLockedUntil(null);
+        userMapper.updateById(user);
+    }
+
+    @Override
+    public void updateStatus(Long id, Integer status) {
+        SysUser user = requireUser(id);
+        ensureBuiltinAdminMutable(user, "admin 账号不允许禁用");
+        user.setStatus(status == null ? 1 : status);
+        if (status != null && status == 0) {
+            user.setFailedLoginCount(0);
+            user.setLockedUntil(null);
+        }
         userMapper.updateById(user);
     }
 
@@ -219,6 +248,12 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(404, "用户不存在");
         }
         return user;
+    }
+
+    private void ensureBuiltinAdminMutable(SysUser user, String message) {
+        if (BUILTIN_ADMIN_USERNAME.equals(user.getUsername())) {
+            throw new BusinessException(400, message);
+        }
     }
 
     private void replaceUserRoles(Long userId, List<Long> roleIds) {

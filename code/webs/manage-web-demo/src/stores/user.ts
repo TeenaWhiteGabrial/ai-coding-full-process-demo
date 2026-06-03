@@ -18,6 +18,7 @@ interface UserInfo {
   username: string
   realName?: string
   roles: string[]
+  permissions: string[]
   token: string
   avatar?: string
   email?: string
@@ -40,6 +41,7 @@ export const useUserStore = defineStore('user', () => {
       ...data,
       avatar: data?.avatar,
       email: data?.email,
+      permissions: Array.isArray(data?.permissions) ? data.permissions : [],
       realName: data?.realName ?? data?.real_name,
       roles: Array.isArray(data?.roles) ? data.roles : [],
       token,
@@ -48,7 +50,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function login(username: string, password: string) {
+  async function login(username: string, password: string, captchaCode: string, captchaKey: string) {
     const accessStore = useAccessStore()
     const keyRes = await request.get('/common/auth/public-key') as any
     const encryptor = new JSEncrypt()
@@ -56,7 +58,12 @@ export const useUserStore = defineStore('user', () => {
     const encryptedPassword = encryptor.encrypt(password)
     if (!encryptedPassword) throw new Error('Password encryption failed')
 
-    const tokenRes = await request.post('/common/auth/token', { username, password: encryptedPassword }) as any
+    const tokenRes = await request.post('/common/auth/token', {
+      username,
+      password: encryptedPassword,
+      captchaCode,
+      captchaKey,
+    }) as any
     if (tokenRes.code !== 200) throw new Error(tokenRes.message || 'Login failed')
 
     const token = tokenRes.data.token

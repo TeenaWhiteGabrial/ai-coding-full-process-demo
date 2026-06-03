@@ -134,23 +134,30 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid hsl(var(--border));
+  border: none;
   border-radius: 999px;
-  background: hsl(var(--card) / 0.92);
+  background: hsl(var(--card) / 0.72);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   transition:
-    border-color 0.18s ease,
     background-color 0.18s ease,
     color 0.18s ease,
+    box-shadow 0.18s ease,
     transform 0.18s ease;
 }
 
 .header-search-trigger:hover {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--card));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--foreground));
+  box-shadow: 0 10px 24px hsl(var(--shadow-soft));
   transform: translateY(-1px);
+}
+
+.header-search-trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--theme-primary) / 0.18),
+    0 10px 24px hsl(var(--shadow-soft));
 }
 
 .header-search-leading {
@@ -174,9 +181,9 @@ onBeforeUnmount(() => {
 
 .header-search-trigger kbd {
   padding: 1px 6px;
-  border: 1px solid hsl(var(--border));
+  border: none;
   border-radius: 999px;
-  background: hsl(var(--panel));
+  background: hsl(var(--panel-strong));
   color: hsl(var(--muted-foreground));
   font-size: 11px;
   font-family: inherit;

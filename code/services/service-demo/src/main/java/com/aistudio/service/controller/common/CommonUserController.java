@@ -76,6 +76,14 @@ public class CommonUserController {
         return Result.success();
     }
 
+    @Operation(summary = "Update user status")
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        userService.updateStatus(id, status);
+        return Result.success();
+    }
+
     @Operation(summary = "Delete user")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")

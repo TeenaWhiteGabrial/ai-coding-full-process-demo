@@ -50,6 +50,28 @@
   margin-top: 16px;
 }
 
+.table-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.table-shell .page-loading-shell,
+.table-shell .el-table {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+}
+
+.table-shell .el-table__inner-wrapper,
+.table-shell .el-table__body-wrapper,
+.table-shell .el-table__header-wrapper,
+.table-shell .el-table__footer-wrapper {
+  max-width: 100%;
+}
+
 .dialog-hero {
   padding: 4px 0 2px;
 }

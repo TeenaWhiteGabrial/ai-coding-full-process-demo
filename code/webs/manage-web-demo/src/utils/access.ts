@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/user'
 interface AccessRequirement {
   mode?: 'all' | 'any'
   paths?: string[]
+  permissions?: string[]
   roles?: string[]
 }
 
@@ -23,11 +24,15 @@ function hasAccess(requirement?: AccessRequirement) {
 
   const userStore = useUserStore()
   const accessStore = useAccessStore()
+  if ((userStore.userInfo?.roles || []).includes('SUPER_ADMIN')) {
+    return true
+  }
   const mode = requirement.mode || 'any'
   const roleMatched = matchesRequirement(requirement.roles, userStore.userInfo?.roles || [], mode)
   const pathMatched = matchesRequirement(requirement.paths, accessStore.accessiblePaths, mode)
+  const permissionMatched = matchesRequirement(requirement.permissions, userStore.userInfo?.permissions || [], mode)
 
-  return roleMatched && pathMatched
+  return roleMatched && pathMatched && permissionMatched
 }
 
 function updateAccessState(el: HTMLElement, requirement?: AccessRequirement) {

@@ -13,6 +13,7 @@ public class UserInfoResponse {
     private String username;
     private String realName;
     private List<String> roles;
+    private List<String> permissions;
     private String avatar;
     private String email;
 }

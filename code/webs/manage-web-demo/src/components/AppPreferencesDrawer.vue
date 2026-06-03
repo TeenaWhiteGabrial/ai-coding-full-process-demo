@@ -250,23 +250,30 @@ const tools = [
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(var(--border));
+  border: none;
   border-radius: 12px;
-  background: hsl(var(--card) / 0.92);
+  background: hsl(var(--card) / 0.72);
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   transition:
-    border-color 0.18s ease,
     background-color 0.18s ease,
     color 0.18s ease,
+    box-shadow 0.18s ease,
     transform 0.18s ease;
 }
 
 .header-action-btn:hover {
-  border-color: hsl(var(--primary) / 0.22);
-  background: hsl(var(--card));
+  background: hsl(var(--theme-surface-active));
   color: hsl(var(--foreground));
+  box-shadow: 0 10px 24px hsl(var(--shadow-soft));
   transform: translateY(-1px);
+}
+
+.header-action-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--theme-primary) / 0.18),
+    0 10px 24px hsl(var(--shadow-soft));
 }
 
 .settings-icon {

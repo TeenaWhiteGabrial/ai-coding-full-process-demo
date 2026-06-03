@@ -11,4 +11,10 @@ public class LoginRequest {
 
     @NotBlank(message = "密码不能为空")
     private String password;
+
+    @NotBlank(message = "验证码不能为空")
+    private String captchaCode;
+
+    @NotBlank(message = "验证码标识不能为空")
+    private String captchaKey;
 }

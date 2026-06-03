@@ -8,6 +8,8 @@
   --theme-primary: var(--primary);
   --theme-primary-rgb: 22, 119, 255;
   --theme-primary-soft: 212 100% 97%;
+  --theme-primary-subtle: 212 100% 95%;
+  --theme-primary-soft-strong: 212 100% 92%;
   --theme-primary-strong: 214 100% 37%;
   --primary-strong: 214 100% 37%;
   --primary-soft: 212 100% 97%;
@@ -159,6 +161,8 @@
   --shadow-strong: 0 0% 0% / 0.36;
   --theme-primary: var(--primary);
   --theme-primary-soft: color-mix(in srgb, hsl(var(--theme-primary)) 20%, hsl(var(--secondary)));
+  --theme-primary-subtle: color-mix(in srgb, hsl(var(--theme-primary)) 16%, hsl(var(--secondary)));
+  --theme-primary-soft-strong: color-mix(in srgb, hsl(var(--theme-primary)) 22%, hsl(var(--panel)));
   --theme-primary-strong: color-mix(in srgb, hsl(var(--theme-primary)) 78%, white);
   --theme-surface-active: color-mix(in srgb, hsl(var(--theme-primary)) 22%, hsl(var(--secondary)));
   --theme-surface-active-strong: color-mix(in srgb, hsl(var(--theme-primary)) 14%, hsl(var(--panel)));
@@ -169,7 +173,9 @@
 
 .light {
   --theme-primary: var(--primary);
-  --theme-primary-soft: color-mix(in srgb, hsl(var(--theme-primary)) 10%, white);
+  --theme-primary-soft: color-mix(in srgb, hsl(var(--theme-primary)) 12%, white);
+  --theme-primary-subtle: color-mix(in srgb, hsl(var(--theme-primary)) 16%, white);
+  --theme-primary-soft-strong: color-mix(in srgb, hsl(var(--theme-primary)) 24%, white);
   --theme-primary-strong: color-mix(in srgb, hsl(var(--theme-primary)) 82%, black);
   --primary-strong: var(--theme-primary-strong);
   --primary-soft: var(--theme-primary-soft);

@@ -2,15 +2,21 @@
   <div class="manage-page">
     <el-card>
       <div class="page-actions">
-        <el-button v-access="{ paths: ['/menus'] }" type="primary" @click="openCreate">新增菜单</el-button>
+        <el-button v-access="{ permissions: ['menu:create'] }" type="primary" @click="openCreate">新增菜单</el-button>
       </div>
 
       <div class="table-shell">
         <PageLoadingOverlay :loading="pageLoading" compact>
-          <el-table :data="menus" border row-key="id" default-expand-all>
+          <el-table :data="menus" border row-key="id" default-expand-all style="width: 100%">
             <el-table-column prop="name" label="名称" min-width="180" />
             <el-table-column prop="path" label="路径" min-width="180" />
             <el-table-column prop="component" label="组件" min-width="160" />
+            <el-table-column label="类型" width="100">
+              <template #default="{ row }">
+                {{ row.menuType === 'BUTTON' ? '按钮' : '菜单' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="permissionCode" label="权限标识" min-width="180" />
             <el-table-column label="图标" width="160">
               <template #default="{ row }">
                 <div class="icon-preview-cell">
@@ -25,10 +31,10 @@
                 {{ row.hidden === 1 ? '是' : '否' }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
-                <el-button v-access="{ paths: ['/menus'] }" link type="primary" @click="openEdit(row)">编辑</el-button>
-                <el-button v-access="{ paths: ['/menus'] }" link type="danger" @click="removeMenu(row)">删除</el-button>
+                <el-button v-access="{ permissions: ['menu:update'] }" link type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-button v-access="{ permissions: ['menu:delete'] }" link type="danger" @click="removeMenu(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -69,6 +75,15 @@
             </el-form-item>
             <el-form-item label="组件">
               <el-input v-model="form.component" />
+            </el-form-item>
+            <el-form-item label="类型">
+              <el-radio-group v-model="form.menuType">
+                <el-radio label="MENU">菜单</el-radio>
+                <el-radio label="BUTTON">按钮</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="权限标识">
+              <el-input v-model="form.permissionCode" placeholder="例如：user:create" />
             </el-form-item>
             <el-form-item label="图标">
               <div class="icon-picker-inline">
@@ -121,6 +136,8 @@ const form = reactive({
   path: '',
   component: '',
   icon: '',
+  menuType: 'MENU',
+  permissionCode: '',
   sort: 0,
   hidden: 0,
 })
@@ -175,6 +192,8 @@ function resetForm() {
   form.path = ''
   form.component = ''
   form.icon = ''
+  form.menuType = 'MENU'
+  form.permissionCode = ''
   form.sort = 0
   form.hidden = 0
 }
@@ -192,6 +211,8 @@ function openEdit(row: MenuItem) {
   form.path = row.path || ''
   form.component = row.component || ''
   form.icon = row.icon || ''
+  form.menuType = row.menuType || 'MENU'
+  form.permissionCode = row.permissionCode || ''
   form.sort = row.sort || 0
   form.hidden = row.hidden || 0
   iconDialogVisible.value = false
@@ -205,6 +226,8 @@ async function submit() {
     path: form.path,
     component: form.component,
     icon: form.icon,
+    menuType: form.menuType,
+    permissionCode: form.permissionCode,
     sort: form.sort,
     hidden: form.hidden,
   }
@@ -241,16 +264,6 @@ onMounted(loadMenus)
   display: flex;
   justify-content: flex-end;
   margin-bottom: 18px;
-}
-
-.table-shell {
-  border-radius: 18px;
-  min-height: 0;
-}
-
-.table-shell :deep(.page-loading-shell),
-.table-shell :deep(.el-table) {
-  min-height: 100%;
 }
 
 .icon-preview-cell,

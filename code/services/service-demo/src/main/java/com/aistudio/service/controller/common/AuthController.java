@@ -6,6 +6,7 @@ import com.aistudio.service.config.RsaConfig;
 import com.aistudio.service.dto.request.ChangePasswordRequest;
 import com.aistudio.service.dto.request.LoginRequest;
 import com.aistudio.service.dto.request.UpdateProfileRequest;
+import com.aistudio.service.dto.response.CaptchaResponse;
 import com.aistudio.service.dto.response.LoginResponse;
 import com.aistudio.service.dto.response.TokenResponse;
 import com.aistudio.service.dto.response.UserInfoResponse;
@@ -35,6 +36,12 @@ public class AuthController {
     @GetMapping("/public-key")
     public Result<String> publicKey() {
         return Result.success(rsaConfig.getPublicKeyBase64());
+    }
+
+    @Operation(summary = "Get captcha")
+    @GetMapping("/captcha")
+    public Result<CaptchaResponse> captcha() {
+        return Result.success(authService.getCaptcha());
     }
 
     @Operation(summary = "Login")

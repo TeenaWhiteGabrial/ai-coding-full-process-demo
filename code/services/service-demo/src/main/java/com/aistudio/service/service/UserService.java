@@ -20,6 +20,8 @@ public interface UserService {
 
     void resetPassword(Long id, ResetPasswordRequest request);
 
+    void updateStatus(Long id, Integer status);
+
     void changePassword(Long userId, ChangePasswordRequest request);
 
     void updateProfile(Long userId, UpdateProfileRequest request);

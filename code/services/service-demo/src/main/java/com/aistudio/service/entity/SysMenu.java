@@ -18,6 +18,8 @@ public class SysMenu {
     private String path;
     private String component;
     private String icon;
+    private String menuType;
+    private String permissionCode;
     private String appCode;
     private Integer sort;
     private Integer hidden;

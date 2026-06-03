@@ -28,4 +28,17 @@ public interface SysMenuMapper extends BaseMapper<SysMenu> {
             ORDER BY m.sort ASC, m.id ASC
             """)
     List<SysMenu> selectByUserId(Long userId);
+
+    @Select("""
+            SELECT DISTINCT m.permission_code
+            FROM sys_menu m
+            INNER JOIN sys_role_menu rm ON m.id = rm.menu_id
+            INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id
+            WHERE ur.user_id = #{userId}
+              AND COALESCE(m.app_code, 'CONSOLE') = 'CONSOLE'
+              AND COALESCE(m.menu_type, 'MENU') = 'BUTTON'
+              AND m.permission_code IS NOT NULL
+              AND m.permission_code <> ''
+            """)
+    List<String> selectPermissionCodesByUserId(Long userId);
 }

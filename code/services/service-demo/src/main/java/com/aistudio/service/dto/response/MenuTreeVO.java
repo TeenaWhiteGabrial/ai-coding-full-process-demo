@@ -13,6 +13,8 @@ public class MenuTreeVO {
     private String path;
     private String component;
     private String icon;
+    private String menuType;
+    private String permissionCode;
     private Integer sort;
     private Integer hidden;
     private List<MenuTreeVO> children;

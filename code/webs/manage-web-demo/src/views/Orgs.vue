@@ -7,7 +7,7 @@
 
       <div class="table-shell">
         <PageLoadingOverlay :loading="pageLoading" compact>
-          <el-table :data="orgs" border row-key="id" default-expand-all>
+          <el-table :data="orgs" border row-key="id" default-expand-all style="width: 100%">
             <el-table-column prop="orgName" label="组织名称" min-width="180" />
             <el-table-column prop="orgCode" label="组织编码" min-width="140" />
             <el-table-column prop="leaderName" label="负责人" min-width="120" />
@@ -225,16 +225,6 @@ onMounted(loadData)
   display: flex;
   justify-content: flex-end;
   margin-bottom: 18px;
-}
-
-.table-shell {
-  border-radius: 18px;
-  min-height: 0;
-}
-
-.table-shell :deep(.page-loading-shell),
-.table-shell :deep(.el-table) {
-  min-height: 100%;
 }
 
 .switch-box {

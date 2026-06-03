@@ -28,6 +28,9 @@ public class UserCreateRequest {
     @Size(max = 100, message = "邮箱不能超过 100 个字符")
     private String email;
 
+    @Pattern(regexp = "^$|^1[3-9]\\d{9}$", message = "手机号格式不正确")
+    private String phone;
+
     @Size(max = 500, message = "头像地址不能超过 500 个字符")
     private String avatar;
 

@@ -92,6 +92,11 @@ function buildAccessibleRoutes(menus: ConsoleMenu[]) {
     routes.push(createConsoleRouteRecord(matched, item.name))
   }
 
+  const settingsMatched = resolveConsoleRoute({ path: '/settings' })
+  if (settingsMatched && !visitedNames.has(settingsMatched.name)) {
+    routes.push(createConsoleRouteRecord(settingsMatched))
+  }
+
   return routes
 }
 

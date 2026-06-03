@@ -362,15 +362,15 @@ onBeforeUnmount(() => {
 }
 
 .tabbar-item:hover:not(.active) .tabbar-background-content {
-  background: hsl(var(--theme-surface-active));
+  background: var(--theme-primary-subtle);
   transform: translateY(1px);
 }
 
 .tabbar-item.active .tabbar-background-content {
   background: linear-gradient(
     180deg,
-    hsl(var(--theme-surface-active-strong)),
-    hsl(var(--theme-surface-active))
+    var(--theme-primary-soft-strong),
+    var(--theme-primary-subtle)
   );
   box-shadow:
     inset 0 1px 0 hsl(var(--primary) / 0.18),
@@ -379,7 +379,7 @@ onBeforeUnmount(() => {
 
 .tabbar-item.active .tabbar-curve-left,
 .tabbar-item.active .tabbar-curve-right {
-  background: hsl(var(--theme-surface-active));
+  background: var(--theme-primary-subtle);
 }
 
 .tabbar-main {

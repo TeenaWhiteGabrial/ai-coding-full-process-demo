@@ -11,10 +11,13 @@ export interface UserManageItem {
   username: string
   realName?: string
   email?: string
+  phone?: string
   avatar?: string
   orgId?: number
   orgName?: string
   status: number
+  failedLoginCount?: number
+  lockedUntil?: string
   roleIds: number[]
   roleCodes: string[]
   roleNames: string[]
@@ -39,8 +42,23 @@ export interface MenuItem {
   path?: string
   component?: string
   icon?: string
+  menuType?: string
+  permissionCode?: string
   sort?: number
   hidden?: number
+  children?: MenuItem[]
+}
+
+export interface DictItem {
+  id: number
+  parentId: number
+  dictType: string
+  dictLabel: string
+  dictValue: string
+  status: number
+  sort?: number
+  remark?: string
+  children?: DictItem[]
 }
 
 export interface RoleMenuTreeItem extends MenuItem {
@@ -54,6 +72,7 @@ export const managementApi = {
   listRoles: () => request.get('/common/user/roles'),
   createUser: (data: any) => request.post('/common/user', data),
   updateUser: (id: number, data: any) => request.put(`/common/user/${id}`, data),
+  updateUserStatus: (id: number, status: number) => request.put(`/common/user/${id}/status`, null, { params: { status } }),
   resetUserPassword: (id: number, newPassword: string) => request.put(`/common/user/${id}/password`, { newPassword }),
   deleteUser: (id: number) => request.delete(`/common/user/${id}`),
 
@@ -70,6 +89,12 @@ export const managementApi = {
   createMenu: (data: any) => request.post('/common/menu', data),
   updateMenu: (id: number, data: any) => request.put(`/common/menu/${id}`, data),
   deleteMenu: (id: number) => request.delete(`/common/menu/${id}`),
+
+  dictTree: (dictType?: string) => request.get('/common/dict/tree', { params: { dictType } }),
+  dictDetail: (id: number) => request.get(`/common/dict/${id}`),
+  createDict: (data: any) => request.post('/common/dict', data),
+  updateDict: (id: number, data: any) => request.put(`/common/dict/${id}`, data),
+  deleteDict: (id: number) => request.delete(`/common/dict/${id}`),
 
   orgTree: () => request.get('/common/org/tree'),
   orgOptions: () => request.get('/common/org/options'),

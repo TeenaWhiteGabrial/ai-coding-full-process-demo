@@ -7,10 +7,10 @@
 
       <div class="table-shell">
         <PageLoadingOverlay :loading="pageLoading" compact>
-          <el-table :data="roles" border>
+          <el-table :data="roles" border style="width: 100%">
             <el-table-column prop="roleCode" label="角色编码" min-width="160" />
             <el-table-column prop="roleName" label="角色名称" min-width="160" />
-            <el-table-column label="操作" width="240">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="{ row }">
                 <el-button v-access="{ paths: ['/roles'] }" link type="primary" :disabled="row.roleCode === 'SUPER_ADMIN'" @click="openMenus(row)">
                   菜单权限
@@ -205,16 +205,6 @@ onMounted(loadRoles)
   display: flex;
   justify-content: flex-end;
   margin-bottom: 18px;
-}
-
-.table-shell {
-  border-radius: 18px;
-  min-height: 0;
-}
-
-.table-shell :deep(.page-loading-shell),
-.table-shell :deep(.el-table) {
-  min-height: 100%;
 }
 
 .field-tip {

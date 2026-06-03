@@ -39,6 +39,9 @@ public class MenuServiceImpl implements MenuService {
         List<SysMenu> menus = isSuperAdmin
                 ? menuMapper.selectAllConsoleMenus()
                 : menuMapper.selectByUserId(userId);
+        menus = menus.stream()
+                .filter(menu -> !"BUTTON".equalsIgnoreCase(menu.getMenuType()))
+                .toList();
         List<MenuTreeVO> voList = new ArrayList<>();
         for (SysMenu menu : menus) {
             MenuTreeVO vo = new MenuTreeVO();
@@ -106,6 +109,8 @@ public class MenuServiceImpl implements MenuService {
         SysMenu menu = new SysMenu();
         BeanUtils.copyProperties(request, menu);
         menu.setParentId(request.getParentId() == null ? 0L : request.getParentId());
+        menu.setMenuType(request.getMenuType() == null ? "MENU" : request.getMenuType());
+        menu.setPermissionCode(blankToNull(request.getPermissionCode()));
         menu.setSort(request.getSort() == null ? 0 : request.getSort());
         menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
@@ -119,6 +124,8 @@ public class MenuServiceImpl implements MenuService {
         BeanUtils.copyProperties(request, menu);
         menu.setId(id);
         menu.setParentId(request.getParentId() == null ? 0L : request.getParentId());
+        menu.setMenuType(request.getMenuType() == null ? "MENU" : request.getMenuType());
+        menu.setPermissionCode(blankToNull(request.getPermissionCode()));
         menu.setSort(request.getSort() == null ? 0 : request.getSort());
         menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
@@ -153,6 +160,19 @@ public class MenuServiceImpl implements MenuService {
         menuMapper.deleteById(id);
     }
 
+    @Override
+    public Set<String> getPermissionCodes(Long userId) {
+        boolean isSuperAdmin = roleMapper.selectByUserId(userId).stream()
+                .anyMatch(role -> ROLE_SUPER_ADMIN.equals(role.getRoleCode()));
+        if (isSuperAdmin) {
+            return menuMapper.selectAllConsoleMenus().stream()
+                    .map(SysMenu::getPermissionCode)
+                    .filter(code -> code != null && !code.isBlank())
+                    .collect(Collectors.toSet());
+        }
+        return menuMapper.selectPermissionCodesByUserId(userId).stream().collect(Collectors.toSet());
+    }
+
     private List<MenuTreeVO> buildTree(List<MenuTreeVO> items, Long parentId) {
         List<MenuTreeVO> result = new ArrayList<>();
         for (MenuTreeVO item : items) {
@@ -173,5 +193,12 @@ public class MenuServiceImpl implements MenuService {
             }
         }
         return result;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 }

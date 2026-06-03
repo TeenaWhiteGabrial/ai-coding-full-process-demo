@@ -14,18 +14,34 @@
     <div class="login-shell">
       <el-card class="login-card">
         <div class="login-head">
-          <span class="login-kicker">Console Access</span>
           <h2>登录控制台</h2>
           <p>默认测试账号：`admin` / `admin123`</p>
         </div>
 
         <el-form ref="formRef" :model="form" :rules="rules" class="login-form" @keyup.enter="handleLogin">
           <el-form-item prop="username">
-            <el-input v-model="form.username" placeholder="Username" size="large" />
+            <el-input v-model="form.username" placeholder="账号" size="large" />
           </el-form-item>
           <el-form-item prop="password">
-            <el-input v-model="form.password" type="password" placeholder="Password" size="large" show-password />
+            <el-input v-model="form.password" type="password" placeholder="密码" size="large" show-password />
           </el-form-item>
+          <el-form-item prop="captchaCode">
+            <div class="captcha-row">
+              <el-input v-model="form.captchaCode" placeholder="验证码" size="large" />
+              <button class="captcha-box" type="button" :disabled="captchaLoading" @click="loadCaptcha">
+                <img v-if="captchaImage" :src="captchaImage" alt="captcha" class="captcha-image">
+                <span v-else>{{ captchaLoading ? '加载中...' : '获取验证码' }}</span>
+              </button>
+            </div>
+          </el-form-item>
+          <el-alert
+            v-if="lockHint"
+            type="warning"
+            :closable="false"
+            show-icon
+            class="lock-alert"
+            :title="lockHint"
+          />
           <el-button type="primary" size="large" class="submit-btn" :loading="loading" @click="handleLogin">
             进入控制台
           </el-button>
@@ -36,11 +52,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { ElMessage, type FormInstance } from 'element-plus'
+
+import { authApi } from '@/api'
 import ThemeToggle from '@/components/ThemeToggle.vue'
-import type { FormInstance } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import backgroundIllustration from '@/assets/login-background.jpg'
 
 const route = useRoute()
@@ -48,25 +66,57 @@ const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const form = ref({ username: 'admin', password: 'admin123' })
+const captchaLoading = ref(false)
+const captchaKey = ref('')
+const captchaImage = ref('')
+const lockHint = ref('')
+const form = reactive({
+  username: 'admin',
+  password: 'admin123',
+  captchaCode: '',
+})
 const rules = {
-  username: [{ required: true, message: 'Username is required', trigger: 'blur' }],
-  password: [{ required: true, message: 'Password is required', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
+}
+
+async function loadCaptcha() {
+  captchaLoading.value = true
+  try {
+    const res = await authApi.getCaptcha() as any
+    captchaKey.value = res.data?.captchaKey || ''
+    captchaImage.value = res.data?.captchaImage || ''
+    form.captchaCode = ''
+  } finally {
+    captchaLoading.value = false
+  }
 }
 
 async function handleLogin() {
   await formRef.value?.validate()
   loading.value = true
+  lockHint.value = ''
   try {
-    await userStore.login(form.value.username, form.value.password)
+    await userStore.login(form.username, form.password, form.captchaCode, captchaKey.value)
     const redirect = typeof route.query.redirect === 'string'
       ? decodeURIComponent(route.query.redirect)
       : '/'
     router.push(redirect || '/')
+  } catch (error: any) {
+    const message = error?.response?.data?.message || error?.message || ''
+    if (message.includes('分钟后重试')) {
+      lockHint.value = message
+    } else if (message) {
+      ElMessage.warning(message)
+    }
+    await loadCaptcha()
   } finally {
     loading.value = false
   }
 }
+
+loadCaptcha()
 </script>
 
 <style scoped>
@@ -91,7 +141,6 @@ async function handleLogin() {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  filter: saturate(0.94) contrast(1.01);
 }
 
 .login-overlay {
@@ -138,18 +187,8 @@ async function handleLogin() {
   margin-bottom: 18px;
 }
 
-.login-kicker {
-  display: inline-block;
-  margin-bottom: 10px;
-  color: hsl(var(--primary));
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .login-head h2 {
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 30px;
   line-height: 1.08;
 }
@@ -163,6 +202,36 @@ async function handleLogin() {
 .login-form {
   display: grid;
   gap: 4px;
+}
+
+.captcha-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 12px;
+  width: 100%;
+}
+
+.captcha-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  background: hsl(var(--card));
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.captcha-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lock-alert {
+  margin-top: 2px;
 }
 
 .submit-btn {
@@ -183,18 +252,12 @@ async function handleLogin() {
     justify-content: center;
   }
 
-  .login-overlay {
-    background:
-      linear-gradient(180deg, hsl(210 22% 10% / 0.2), hsl(210 22% 10% / 0.34)),
-      linear-gradient(180deg, hsl(0 0% 100% / 0.03), hsl(0 0% 0% / 0.08));
-  }
-
   .login-card :deep(.el-card__body) {
     padding: 24px 22px 20px;
   }
 
-  .login-head h2 {
-    font-size: 28px;
+  .captcha-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

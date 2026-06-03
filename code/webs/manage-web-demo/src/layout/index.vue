@@ -71,7 +71,7 @@
       </div>
     </header>
 
-    <aside class="sidebar" :class="{ collapsed: isCollapsed }" :style="{ width: sidebarWidth }">
+    <aside class="sidebar" :class="{ collapsed: isCollapsed, resizing: isSidebarResizing }" :style="{ width: sidebarWidth }">
       <div class="sidebar-scroll">
         <el-menu
           :default-active="activeMenu"
@@ -112,6 +112,15 @@
           </el-icon>
         </button>
       </div>
+
+      <div
+        v-if="!isCollapsed"
+        class="sidebar-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整侧边栏宽度"
+        @mousedown="startSidebarResize"
+      ></div>
     </aside>
 
     <section class="workspace">
@@ -140,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAccessStore } from '@/stores/access'
 import { useSiteStore } from '@/stores/site'
@@ -167,13 +176,26 @@ const userInfo = computed(() => userStore.userInfo)
 const homePath = computed(() => accessStore.homePath)
 
 const isCollapsed = ref(false)
+const isSidebarResizing = ref(false)
+const expandedSidebarWidth = ref(268)
 const selectedTopMenuId = ref<number | null>(null)
-const savedCollapsed = localStorage.getItem('sidebarCollapsed')
+const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed'
+const SIDEBAR_WIDTH_KEY = 'sidebarWidth'
+const SIDEBAR_COLLAPSED_WIDTH = 76
+const SIDEBAR_MIN_WIDTH = 220
+const SIDEBAR_MAX_WIDTH = 360
+const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
 if (savedCollapsed === 'true') {
   isCollapsed.value = true
 }
+const savedSidebarWidth = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+if (!Number.isNaN(savedSidebarWidth) && savedSidebarWidth > 0) {
+  expandedSidebarWidth.value = clampSidebarWidth(savedSidebarWidth)
+}
 
-const sidebarWidth = computed(() => isCollapsed.value ? '76px' : '268px')
+const sidebarWidth = computed(() =>
+  `${isCollapsed.value ? SIDEBAR_COLLAPSED_WIDTH : expandedSidebarWidth.value}px`,
+)
 const activeMenu = computed(() => route.path)
 const allVisibleMenus = computed(() => filterVisibleMenus(menuStore.menus))
 const topLevelMenus = computed(() => allVisibleMenus.value)
@@ -217,6 +239,10 @@ onMounted(async () => {
     await menuStore.fetchMenus()
   }
   await siteStore.fetchSiteConfig()
+})
+
+onBeforeUnmount(() => {
+  stopSidebarResize()
 })
 
 function filterVisibleMenus(menus: ConsoleMenu[]): ConsoleMenu[] {
@@ -279,9 +305,44 @@ async function activateTopMenu(menu: ConsoleMenu) {
   await router.push(withConsolePrefix(nextPath))
 }
 
+function clampSidebarWidth(width: number) {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)))
+}
+
+function persistSidebarWidth(width: number) {
+  expandedSidebarWidth.value = clampSidebarWidth(width)
+  localStorage.setItem(SIDEBAR_WIDTH_KEY, String(expandedSidebarWidth.value))
+}
+
 function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value
-  localStorage.setItem('sidebarCollapsed', isCollapsed.value.toString())
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, isCollapsed.value.toString())
+}
+
+function handleSidebarResize(event: MouseEvent) {
+  persistSidebarWidth(event.clientX)
+}
+
+function stopSidebarResize() {
+  if (!isSidebarResizing.value) return
+
+  isSidebarResizing.value = false
+  window.removeEventListener('mousemove', handleSidebarResize)
+  window.removeEventListener('mouseup', stopSidebarResize)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+function startSidebarResize(event: MouseEvent) {
+  if (window.innerWidth <= 960) return
+
+  event.preventDefault()
+  isSidebarResizing.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  handleSidebarResize(event)
+  window.addEventListener('mousemove', handleSidebarResize)
+  window.addEventListener('mouseup', stopSidebarResize)
 }
 
 async function handleCommand(command: string) {
@@ -328,6 +389,7 @@ async function handleCommand(command: string) {
   grid-row: 2;
   display: flex;
   flex-direction: column;
+  position: relative;
   min-height: 0;
   height: 100%;
   background:
@@ -335,6 +397,10 @@ async function handleCommand(command: string) {
   border-right: 1px solid hsl(var(--border));
   transition: width 0.3s ease;
   box-shadow: 18px 0 40px hsl(var(--shadow-soft));
+}
+
+.sidebar.resizing {
+  transition: none;
 }
 
 .brand {
@@ -403,7 +469,7 @@ async function handleCommand(command: string) {
 }
 
 :deep(.sidebar-menu .el-menu-item.is-active) {
-  background: hsl(var(--theme-surface-active));
+  background: var(--theme-primary-subtle);
   color: hsl(var(--primary));
   box-shadow: var(--ai-glow-ring);
 }
@@ -417,6 +483,39 @@ async function handleCommand(command: string) {
   display: grid;
   gap: 10px;
   padding: 0 14px 14px;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;
+}
+
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 2px;
+  height: 44px;
+  border-radius: 999px;
+  background: hsl(var(--border));
+  transform: translateY(-50%);
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.sidebar:hover .sidebar-resizer::after,
+.sidebar.resizing .sidebar-resizer::after,
+.sidebar-resizer:hover::after {
+  opacity: 1;
+  background: hsl(var(--theme-primary) / 0.35);
 }
 
 .sidebar-toggle-btn {
@@ -573,8 +672,8 @@ async function handleCommand(command: string) {
 }
 
 .top-nav-item.active {
-  background: hsl(var(--theme-surface-active-strong));
-  border-color: hsl(var(--primary) / 0.16);
+  background: var(--theme-primary-soft-strong);
+  border-color: transparent;
   color: hsl(var(--primary));
   box-shadow: var(--ai-glow-xs);
 }
@@ -627,17 +726,26 @@ async function handleCommand(command: string) {
   gap: 8px;
   cursor: pointer;
   padding: 4px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
+  border: none;
+  background: hsl(var(--card) / 0.72);
   border-radius: 12px;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .user-trigger:hover {
   background: hsl(var(--theme-surface-active));
-  border-color: hsl(var(--primary) / 0.18);
+  box-shadow: 0 10px 24px hsl(var(--shadow-soft));
+  transform: translateY(-1px);
+}
+
+.user-trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--theme-primary) / 0.18),
+    0 10px 24px hsl(var(--shadow-soft));
 }
 
 .user-copy {
@@ -816,6 +924,10 @@ async function handleCommand(command: string) {
   }
 
   .sidebar {
+    display: none;
+  }
+
+  .sidebar-resizer {
     display: none;
   }
 

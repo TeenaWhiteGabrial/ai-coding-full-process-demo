@@ -2,11 +2,11 @@
   <div class="manage-page">
     <el-card>
       <div class="page-actions">
-        <el-button v-access="{ paths: ['/users'] }" type="primary" @click="openCreate">新增账号</el-button>
+        <el-button v-access="{ permissions: ['user:create'] }" type="primary" @click="openCreate">新增账号</el-button>
       </div>
 
       <div class="page-toolbar">
-        <el-input v-model="keyword" placeholder="搜索账号 / 姓名 / 邮箱" clearable @keyup.enter="loadData" />
+        <el-input v-model="keyword" placeholder="搜索账号 / 姓名 / 邮箱 / 手机号" clearable @keyup.enter="loadData" />
         <el-tree-select
           v-model="selectedOrgId"
           :data="orgTreeOptions"
@@ -21,10 +21,15 @@
 
       <div class="table-shell">
         <PageLoadingOverlay :loading="pageLoading" compact>
-          <el-table :data="records" border>
+          <el-table :data="records" border style="width: 100%">
             <el-table-column prop="username" label="账号" min-width="140" />
             <el-table-column prop="realName" label="姓名" min-width="120" />
             <el-table-column prop="email" label="邮箱" min-width="200" />
+            <el-table-column prop="phone" label="手机号" min-width="140">
+              <template #default="{ row }">
+                {{ row.phone || '-' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="orgName" label="组织" min-width="180">
               <template #default="{ row }">
                 {{ row.orgName || '-' }}
@@ -35,18 +40,49 @@
                 <el-tag v-for="name in row.roleNames" :key="name" class="tag-gap">{{ name }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="100">
+            <el-table-column label="状态" width="140">
               <template #default="{ row }">
-                <el-tag :type="row.status === 1 ? 'success' : 'info'">
+                <el-switch
+                  v-access="{ permissions: ['user:toggle-status'] }"
+                  :model-value="row.status === 1"
+                  :disabled="isProtectedAdmin(row)"
+                  inline-prompt
+                  active-text="启"
+                  inactive-text="停"
+                  @change="toggleStatus(row, $event)"
+                />
+                <el-tag v-if="!hasStatusPermission" :type="row.status === 1 ? 'success' : 'info'">
                   {{ row.status === 1 ? '启用' : '禁用' }}
                 </el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="锁定状态" min-width="180">
+              <template #default="{ row }">
+                <span v-if="row.lockedUntil">锁定至 {{ row.lockedUntil }}</span>
+                <span v-else>失败 {{ row.failedLoginCount || 0 }} 次</span>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="280" fixed="right">
               <template #default="{ row }">
-                <el-button v-access="{ paths: ['/users'] }" link type="primary" @click="openEdit(row)">编辑</el-button>
-                <el-button v-access="{ paths: ['/users'] }" link type="warning" @click="openResetPassword(row)">重置密码</el-button>
-                <el-button v-access="{ paths: ['/users'] }" link type="danger" @click="removeUser(row)">删除</el-button>
+                <el-button
+                  v-access="{ permissions: ['user:update'] }"
+                  link
+                  type="primary"
+                  :disabled="isProtectedAdmin(row)"
+                  @click="openEdit(row)"
+                >
+                  编辑
+                </el-button>
+                <el-button v-access="{ permissions: ['user:reset-password'] }" link type="warning" @click="openResetPassword(row)">重置密码</el-button>
+                <el-button
+                  v-access="{ permissions: ['user:delete'] }"
+                  link
+                  type="danger"
+                  :disabled="isProtectedAdmin(row)"
+                  @click="removeUser(row)"
+                >
+                  删除
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -100,6 +136,10 @@
 
             <el-form-item label="邮箱" prop="email">
               <el-input v-model="form.email" placeholder="请输入邮箱" />
+            </el-form-item>
+
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="form.phone" maxlength="11" placeholder="请输入手机号" />
             </el-form-item>
 
             <el-form-item label="所属组织" prop="orgId">
@@ -189,6 +229,7 @@ import { managementApi, type OrgItem, type RoleItem, type UserManageItem } from 
 import DialogHero from '@/components/DialogHero.vue'
 import ImageUploadField from '@/components/ImageUploadField.vue'
 import PageLoadingOverlay from '@/components/PageLoadingOverlay.vue'
+import { useUserStore } from '@/stores/user'
 
 const keyword = ref('')
 const page = ref(1)
@@ -196,6 +237,7 @@ const size = ref(10)
 const total = ref(0)
 const pageLoading = ref(false)
 const records = ref<UserManageItem[]>([])
+const userStore = useUserStore()
 const roleOptions = ref<RoleItem[]>([])
 const orgOptions = ref<OrgItem[]>([])
 const dialogVisible = ref(false)
@@ -210,6 +252,7 @@ const form = reactive({
   password: '',
   realName: '',
   email: '',
+  phone: '',
   avatar: '',
   orgId: undefined as number | undefined,
   roleIds: [] as number[],
@@ -257,6 +300,16 @@ const rules: FormRules = {
       trigger: 'blur',
     },
   ],
+  phone: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) return callback()
+        const ok = /^1[3-9]\d{9}$/.test(value)
+        callback(ok ? undefined : new Error('手机号格式不正确'))
+      },
+      trigger: 'blur',
+    },
+  ],
   roleIds: [
     {
       validator: (_rule, value, callback) => {
@@ -289,6 +342,14 @@ const enabled = computed({
     form.status = value ? 1 : 0
   },
 })
+
+const hasStatusPermission = computed(() =>
+  (userStore.userInfo?.permissions || []).includes('user:toggle-status'),
+)
+
+function isProtectedAdmin(row: UserManageItem) {
+  return row.username === 'admin'
+}
 
 const orgTreeOptions = computed(() => orgOptions.value.map(markOrgLabel))
 
@@ -324,6 +385,7 @@ function resetFormData() {
   form.password = ''
   form.realName = ''
   form.email = ''
+  form.phone = ''
   form.avatar = ''
   form.orgId = undefined
   form.roleIds = []
@@ -343,6 +405,7 @@ function openEdit(row: UserManageItem) {
   form.password = ''
   form.realName = row.realName || ''
   form.email = row.email || ''
+  form.phone = row.phone || ''
   form.avatar = row.avatar || ''
   form.orgId = row.orgId
   form.roleIds = [...(row.roleIds || [])]
@@ -356,6 +419,7 @@ async function submit() {
     await managementApi.updateUser(editingId.value, {
       realName: form.realName,
       email: form.email,
+      phone: form.phone,
       avatar: form.avatar,
       orgId: form.orgId,
       roleIds: form.roleIds,
@@ -368,6 +432,7 @@ async function submit() {
       password: form.password,
       realName: form.realName,
       email: form.email,
+      phone: form.phone,
       avatar: form.avatar,
       orgId: form.orgId,
       roleIds: form.roleIds,
@@ -398,6 +463,13 @@ async function removeUser(row: UserManageItem) {
   await managementApi.deleteUser(row.id)
   ElMessage.success('账号已删除')
   await loadData()
+}
+
+async function toggleStatus(row: UserManageItem, value: string | number | boolean) {
+  const nextStatus = value ? 1 : 0
+  await managementApi.updateUserStatus(row.id, nextStatus)
+  row.status = nextStatus
+  ElMessage.success(nextStatus === 1 ? '账号已启用' : '账号已禁用')
 }
 
 function handlePageChange(nextPage: number) {
@@ -465,16 +537,6 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 18px;
-}
-
-.table-shell {
-  border-radius: 18px;
-  min-height: 0;
-}
-
-.table-shell :deep(.page-loading-shell),
-.table-shell :deep(.el-table) {
-  min-height: 100%;
 }
 
 .switch-box {
