@@ -395,7 +395,8 @@ function resetFormData() {
 function openCreate() {
   resetFormData()
   const defaultRole = roleOptions.value.find(role => role.roleCode === 'USER')
-  form.roleIds = defaultRole ? [defaultRole.id] : []
+  const fallbackRole = roleOptions.value[0]
+  form.roleIds = defaultRole ? [defaultRole.id] : (fallbackRole ? [fallbackRole.id] : [])
   dialogVisible.value = true
 }
 

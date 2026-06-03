@@ -13,7 +13,7 @@
     class="preferences-drawer"
   >
     <div class="preferences-wrap">
-      <DialogHero title="界面偏好" description="把 vben 顶栏常用设置移进来，快速调整主题、布局和工具入口。" />
+      <DialogHero title="界面偏好" />
 
       <section class="preferences-section">
         <div class="section-title">主题模式</div>
@@ -50,23 +50,6 @@
       </section>
 
       <section class="preferences-section">
-        <div class="section-title">布局模式</div>
-        <div class="mode-grid">
-          <button
-            v-for="item in layoutModes"
-            :key="item.value"
-            class="mode-card"
-            :class="{ active: themeStore.layoutMode === item.value }"
-            type="button"
-            @click="themeStore.setLayoutMode(item.value)"
-          >
-            <strong>{{ item.label }}</strong>
-            <span>{{ item.description }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="preferences-section">
         <div class="section-title">侧边栏风格</div>
         <div class="mode-grid">
           <button
@@ -76,23 +59,6 @@
             :class="{ active: themeStore.sidebarStyle === item.value }"
             type="button"
             @click="themeStore.setSidebarStyle(item.value)"
-          >
-            <strong>{{ item.label }}</strong>
-            <span>{{ item.description }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="preferences-section">
-        <div class="section-title">内容宽度</div>
-        <div class="mode-grid width-grid">
-          <button
-            v-for="item in contentWidths"
-            :key="item.value"
-            class="mode-card"
-            :class="{ active: themeStore.contentWidth === item.value }"
-            type="button"
-            @click="themeStore.setContentWidth(item.value)"
           >
             <strong>{{ item.label }}</strong>
             <span>{{ item.description }}</span>
@@ -112,13 +78,6 @@
           </div>
           <div class="switch-item">
             <div>
-              <strong>固定顶栏</strong>
-              <span>滚动页面时让顶栏持续保持可见。</span>
-            </div>
-            <el-switch :model-value="themeStore.headerFixed" @change="value => themeStore.setHeaderFixed(Boolean(value))" />
-          </div>
-          <div class="switch-item">
-            <div>
               <strong>毛玻璃顶栏</strong>
               <span>让顶栏拥有半透明和模糊效果。</span>
             </div>
@@ -133,7 +92,6 @@
           <div class="switch-item">
             <div>
               <strong>启用切换动画</strong>
-              <span>页面切换时使用类似 vben 的过渡效果。</span>
             </div>
             <el-switch :model-value="themeStore.pageTransitionEnabled" @change="value => themeStore.setPageTransitionEnabled(Boolean(value))" />
           </div>
@@ -185,8 +143,6 @@ import { Setting } from '@element-plus/icons-vue'
 import DialogHero from '@/components/DialogHero.vue'
 import {
   useThemeStore,
-  type ContentWidth,
-  type LayoutMode,
   type SidebarStyle,
   type ThemeColor,
 } from '@/stores/theme'
@@ -211,26 +167,13 @@ const themeColors: Array<{ color: string; label: string; value: ThemeColor }> = 
   { value: 'slate', label: '石板灰', color: '#475569' },
 ]
 
-const layoutModes: Array<{ description: string; label: string; value: LayoutMode }> = [
-  { value: 'classic', label: '经典侧栏', description: '标准 vben 后台结构，侧边栏独立。' },
-  { value: 'inset', label: '内嵌卡片', description: '内容区更像工作台卡片，留白更强。' },
-  { value: 'top-mix', label: '顶部混合', description: '头部更突出，侧栏更轻，接近 mixed 感觉。' },
-]
-
 const sidebarStyles: Array<{ description: string; label: string; value: SidebarStyle }> = [
-  { value: 'dark', label: '深色侧栏', description: '对比更强，更接近 vben 默认后台风格。' },
-  { value: 'light', label: '浅色侧栏', description: '整体更轻，更适合偏内容型后台。' },
-  { value: 'semi-dark', label: '半深侧栏', description: '在浅色主题里保留一层深色导航氛围。' },
-]
-
-const contentWidths: Array<{ description: string; label: string; value: ContentWidth }> = [
-  { value: 'compact', label: '紧凑', description: '适合表单和信息密集页面。' },
-  { value: 'wide', label: '标准', description: '平衡留白和信息密度。' },
-  { value: 'full', label: '通栏', description: '尽量拉满可用空间，适合大表格。' },
+  { value: 'dark', label: '浅色侧栏', description: '使用默认侧栏配置，保留更完整的导航层次。' },
+  { value: 'semi-dark', label: '深色侧栏', description: '使用更深的导航背景，突出菜单层级。' },
 ]
 
 const transitions = [
-  { value: 'fade-slide', label: '推荐淡入滑动', description: '像 vben 默认那样，轻微位移配合淡入淡出。' },
+  { value: 'fade-slide', label: '推荐淡入滑动', description: '轻微位移配合淡入淡出。' },
   { value: 'fade', label: '简洁淡入', description: '更安静，适合强调内容本身。' },
   { value: 'fade-up', label: '向上浮现', description: '进入时更有上浮感，节奏更轻。' },
   { value: 'fade-down', label: '向下落入', description: '适合偏工具化的页面切换。' },

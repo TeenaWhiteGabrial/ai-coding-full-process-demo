@@ -73,14 +73,6 @@ const consoleRouteDefinitions: ConsoleRouteDefinition[] = [
     component: () => import('@/views/Dicts.vue'),
   },
   {
-    componentKey: 'PermissionTest',
-    fullPath: '/permission-test',
-    name: 'ConsolePermissionTest',
-    routePath: 'permission-test',
-    title: '权限测试',
-    component: () => import('@/views/PermissionTest.vue'),
-  },
-  {
     componentKey: 'Settings',
     fullPath: '/settings',
     name: 'ConsoleSettings',

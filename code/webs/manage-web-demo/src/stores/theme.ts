@@ -53,7 +53,7 @@ interface ThemePreferences {
 const STORAGE_KEY = 'consolePreferences'
 
 const defaults: ThemePreferences = {
-  contentWidth: 'wide',
+  contentWidth: 'full',
   enableFullscreen: true,
   enableSearch: true,
   enableThemeToggle: true,
@@ -73,9 +73,11 @@ function loadPreferences(): ThemePreferences {
   if (!raw) return { ...defaults }
 
   try {
+    const parsed = JSON.parse(raw)
     return {
       ...defaults,
-      ...JSON.parse(raw),
+      ...parsed,
+      contentWidth: parsed.contentWidth || defaults.contentWidth,
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY)

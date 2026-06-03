@@ -7,7 +7,7 @@ spring:
   application:
     name: ai-studio-service
   datasource:
-    url: jdbc:mysql://39.105.212.130:3306/template_demo_v3?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://39.105.212.130:3306/template_demo_v5?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: DevRoot@2026
     driver-class-name: com.mysql.cj.jdbc.Driver

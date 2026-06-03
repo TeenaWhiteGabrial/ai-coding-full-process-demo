@@ -449,6 +449,17 @@ async function handleCommand(command: string) {
   color: hsl(215 16% 72%);
 }
 
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-menu-item:hover),
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-sub-menu__title:hover),
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-menu-item.is-active) {
+  background: transparent;
+}
+
+.layout-shell.sidebar-semi-dark :deep(.sidebar-menu .el-menu-item.is-active) {
+  color: hsl(210 24% 98%);
+  box-shadow: none;
+}
+
 :deep(.sidebar-menu .el-menu-item),
 :deep(.sidebar-menu .el-sub-menu__title) {
   height: 44px;
