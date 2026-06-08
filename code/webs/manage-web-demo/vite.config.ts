@@ -28,15 +28,15 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/ai-studio/v1': {
-         target: 'http://localhost:8080',
+         target: 'http://localhost:18081',
         // target: 'http://39.105.212.130',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:18081',
         // target: 'http://39.105.212.130',
         changeOrigin: true,
-      },
+      },  
     },
   },
 })
