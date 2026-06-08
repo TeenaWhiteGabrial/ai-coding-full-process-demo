@@ -10,11 +10,10 @@ import com.aistudio.service.dto.response.TokenResponse;
 import com.aistudio.service.dto.response.UserInfoResponse;
 import com.aistudio.service.entity.SysRole;
 import com.aistudio.service.entity.SysUser;
-import com.aistudio.service.mapper.SysMenuMapper;
-import com.aistudio.service.mapper.SysRoleMapper;
-import com.aistudio.service.mapper.SysUserMapper;
+import com.aistudio.service.repository.SysMenuRepository;
+import com.aistudio.service.repository.SysRoleRepository;
+import com.aistudio.service.repository.SysUserRepository;
 import com.aistudio.service.service.AuthService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,9 +40,9 @@ public class AuthServiceImpl implements AuthService {
     private static final int LOGIN_LOCK_MINUTES = 10;
     private static final long CAPTCHA_EXPIRE_SECONDS = 300;
 
-    private final SysUserMapper userMapper;
-    private final SysRoleMapper roleMapper;
-    private final SysMenuMapper menuMapper;
+    private final SysUserRepository userRepository;
+    private final SysRoleRepository roleRepository;
+    private final SysMenuRepository menuRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RsaConfig rsaConfig;
@@ -66,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
         String plainPassword = rsaConfig.decrypt(request.getPassword());
         SysUser user = validateLogin(request, plainPassword);
-        List<SysRole> roleEntities = roleMapper.selectByUserId(user.getId());
+        List<SysRole> roleEntities = roleRepository.findByUserId(user.getId());
         List<String> roles = roleEntities.stream().map(SysRole::getRoleCode).toList();
         Set<String> permissions = resolvePermissions(user.getId(), roleEntities);
 
@@ -92,11 +91,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserInfoResponse getUserInfo(Long userId) {
-        SysUser user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException(404, "用户不存在");
-        }
-        List<SysRole> roles = roleMapper.selectByUserId(userId);
+        SysUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        List<SysRole> roles = roleRepository.findByUserId(userId);
         Set<String> permissions = resolvePermissions(userId, roles);
         return UserInfoResponse.builder()
                 .userId(user.getId())
@@ -113,21 +110,18 @@ public class AuthServiceImpl implements AuthService {
         boolean isSuperAdmin = roles.stream()
                 .anyMatch(role -> ROLE_SUPER_ADMIN.equals(role.getRoleCode()));
         if (isSuperAdmin) {
-            return menuMapper.selectAllConsoleMenus().stream()
+            return menuRepository.findAllVisibleConsoleMenus().stream()
                     .map(com.aistudio.service.entity.SysMenu::getPermissionCode)
                     .filter(code -> code != null && !code.isBlank())
                     .collect(java.util.stream.Collectors.toSet());
         }
-        return Set.copyOf(menuMapper.selectPermissionCodesByUserId(userId));
+        return Set.copyOf(menuRepository.findPermissionCodesByUserId(userId));
     }
 
     private SysUser validateLogin(LoginRequest request, String plainPassword) {
         validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
-        SysUser user = userMapper.selectOne(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
-        if (user == null) {
-            throw new BusinessException(401, "用户名、密码或验证码错误");
-        }
+        SysUser user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new BusinessException(401, "用户名、密码或验证码错误"));
         if (isLocked(user)) {
             long minutes = LocalDateTime.now().until(user.getLockedUntil(), ChronoUnit.MINUTES) + 1;
             throw new BusinessException(423, "登录失败次数过多，请在 " + Math.max(minutes, 1) + " 分钟后重试");
@@ -160,13 +154,13 @@ public class AuthServiceImpl implements AuthService {
         if (failedCount >= LOGIN_FAIL_LIMIT) {
             user.setLockedUntil(LocalDateTime.now().plusMinutes(LOGIN_LOCK_MINUTES));
         }
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     private void resetLoginFailure(SysUser user) {
         user.setFailedLoginCount(0);
         user.setLockedUntil(null);
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     private boolean isLocked(SysUser user) {

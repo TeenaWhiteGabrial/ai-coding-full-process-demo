@@ -5,11 +5,9 @@ import com.aistudio.service.dto.request.OrgCreateRequest;
 import com.aistudio.service.dto.response.OrgOptionVO;
 import com.aistudio.service.dto.response.OrgTreeVO;
 import com.aistudio.service.entity.SysOrg;
-import com.aistudio.service.entity.SysUser;
-import com.aistudio.service.mapper.SysOrgMapper;
-import com.aistudio.service.mapper.SysUserMapper;
+import com.aistudio.service.repository.SysOrgRepository;
+import com.aistudio.service.repository.SysUserRepository;
 import com.aistudio.service.service.OrgService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -22,8 +20,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrgServiceImpl implements OrgService {
 
-    private final SysOrgMapper orgMapper;
-    private final SysUserMapper userMapper;
+    private final SysOrgRepository orgRepository;
+    private final SysUserRepository userRepository;
 
     @Override
     public List<OrgTreeVO> listTree() {
@@ -50,7 +48,7 @@ public class OrgServiceImpl implements OrgService {
 
         SysOrg org = new SysOrg();
         fillOrg(org, request);
-        orgMapper.insert(org);
+        orgRepository.save(org);
         return org.getId();
     }
 
@@ -62,37 +60,32 @@ public class OrgServiceImpl implements OrgService {
         ensureUniqueCode(request.getOrgCode(), id);
 
         fillOrg(org, request);
-        orgMapper.updateById(org);
+        orgRepository.save(org);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
         requireOrg(id);
-        long childCount = orgMapper.selectCount(new LambdaQueryWrapper<SysOrg>().eq(SysOrg::getParentId, id));
+        long childCount = orgRepository.countByParentId(id);
         if (childCount > 0) {
             throw new BusinessException("当前组织存在子组织，不能删除");
         }
-        long userCount = userMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getOrgId, id));
+        long userCount = userRepository.countByOrgId(id);
         if (userCount > 0) {
             throw new BusinessException("当前组织下存在用户，不能删除");
         }
-        orgMapper.deleteById(id);
+        orgRepository.deleteById(id);
     }
 
     @Override
     public SysOrg requireOrg(Long id) {
-        SysOrg org = orgMapper.selectById(id);
-        if (org == null) {
-            throw new BusinessException(404, "组织不存在");
-        }
-        return org;
+        return orgRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "组织不存在"));
     }
 
     private List<SysOrg> listAll() {
-        return orgMapper.selectList(new LambdaQueryWrapper<SysOrg>()
-                .orderByAsc(SysOrg::getParentId)
-                .orderByAsc(SysOrg::getId));
+        return orgRepository.findAllByOrderByParentIdAscIdAsc();
     }
 
     private void fillOrg(SysOrg org, OrgCreateRequest request) {
@@ -104,12 +97,10 @@ public class OrgServiceImpl implements OrgService {
     }
 
     private void ensureUniqueCode(String orgCode, Long excludeId) {
-        LambdaQueryWrapper<SysOrg> wrapper = new LambdaQueryWrapper<SysOrg>()
-                .eq(SysOrg::getOrgCode, normalize(orgCode));
-        if (excludeId != null) {
-            wrapper.ne(SysOrg::getId, excludeId);
-        }
-        long count = orgMapper.selectCount(wrapper);
+        long count = orgRepository.findAll().stream()
+                .filter(org -> normalize(orgCode).equals(org.getOrgCode()))
+                .filter(org -> excludeId == null || !excludeId.equals(org.getId()))
+                .count();
         if (count > 0) {
             throw new BusinessException("组织编码已存在");
         }
@@ -135,8 +126,9 @@ public class OrgServiceImpl implements OrgService {
             if (cursor.equals(currentId)) {
                 return true;
             }
-            SysOrg org = orgMapper.selectById(cursor);
-            cursor = org == null ? 0L : org.getParentId();
+            cursor = orgRepository.findById(cursor)
+                    .map(SysOrg::getParentId)
+                    .orElse(0L);
         }
         return false;
     }

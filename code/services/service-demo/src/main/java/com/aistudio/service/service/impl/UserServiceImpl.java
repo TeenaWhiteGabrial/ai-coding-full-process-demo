@@ -13,14 +13,17 @@ import com.aistudio.service.entity.SysRole;
 import com.aistudio.service.entity.SysOrg;
 import com.aistudio.service.entity.SysUser;
 import com.aistudio.service.entity.SysUserRole;
-import com.aistudio.service.mapper.SysOrgMapper;
-import com.aistudio.service.mapper.SysRoleMapper;
-import com.aistudio.service.mapper.SysUserMapper;
-import com.aistudio.service.mapper.SysUserRoleMapper;
+import com.aistudio.service.repository.SysOrgRepository;
+import com.aistudio.service.repository.SysRoleRepository;
+import com.aistudio.service.repository.SysUserRepository;
+import com.aistudio.service.repository.SysUserRoleRepository;
 import com.aistudio.service.service.UserService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,51 +43,52 @@ public class UserServiceImpl implements UserService {
     private static final String BUILTIN_ADMIN_USERNAME = "admin";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private final SysUserMapper userMapper;
-    private final SysOrgMapper orgMapper;
-    private final SysRoleMapper roleMapper;
-    private final SysUserRoleMapper userRoleMapper;
+    private final SysUserRepository userRepository;
+    private final SysOrgRepository orgRepository;
+    private final SysRoleRepository roleRepository;
+    private final SysUserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final SecurityUtils securityUtils;
 
     @Override
     public PageResult<UserManageVO> listUsers(int page, int size, String keyword, Long orgId) {
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(keyword)) {
-            wrapper.and(query -> query
-                    .like(SysUser::getUsername, keyword)
-                    .or()
-                    .like(SysUser::getRealName, keyword)
-                    .or()
-                    .like(SysUser::getEmail, keyword)
-                    .or()
-                    .like(SysUser::getPhone, keyword));
-        }
-        if (orgId != null) {
-            wrapper.eq(SysUser::getOrgId, orgId);
-        }
-        wrapper.orderByDesc(SysUser::getId);
-        Page<SysUser> result = userMapper.selectPage(new Page<>(page, size), wrapper);
+        Specification<SysUser> specification = (root, query, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (StringUtils.hasText(keyword)) {
+                String like = "%" + keyword.trim() + "%";
+                predicates.add(builder.or(
+                        builder.like(root.get("username"), like),
+                        builder.like(root.get("realName"), like),
+                        builder.like(root.get("email"), like),
+                        builder.like(root.get("phone"), like)));
+            }
+            if (orgId != null) {
+                predicates.add(builder.equal(root.get("orgId"), orgId));
+            }
+            return builder.and(predicates.toArray(Predicate[]::new));
+        };
+        Page<SysUser> result = userRepository.findAll(
+                specification,
+                PageRequest.of(Math.max(page - 1, 0), size, Sort.by(Sort.Direction.DESC, "id")));
 
-        List<Long> userIds = result.getRecords().stream().map(SysUser::getId).toList();
-        List<SysUserRole> userRoles = userIds.isEmpty() ? List.of() : userRoleMapper.selectList(
-                new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+        List<Long> userIds = result.getContent().stream().map(SysUser::getId).toList();
+        List<SysUserRole> userRoles = userIds.isEmpty() ? List.of() : userRoleRepository.findByUserIdIn(userIds);
         Map<Long, List<Long>> roleIdsByUser = userRoles.stream().collect(
                 Collectors.groupingBy(SysUserRole::getUserId,
                         Collectors.mapping(SysUserRole::getRoleId, Collectors.toList())));
 
         List<Long> allRoleIds = userRoles.stream().map(SysUserRole::getRoleId).distinct().toList();
-        Map<Long, SysRole> roleMap = allRoleIds.isEmpty() ? Map.of() : roleMapper.selectBatchIds(allRoleIds).stream()
+        Map<Long, SysRole> roleMap = allRoleIds.isEmpty() ? Map.of() : roleRepository.findAllById(allRoleIds).stream()
                 .collect(Collectors.toMap(SysRole::getId, Function.identity()));
-        List<Long> orgIds = result.getRecords().stream()
+        List<Long> orgIds = result.getContent().stream()
                 .map(SysUser::getOrgId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<Long, SysOrg> orgMap = orgIds.isEmpty() ? Map.of() : orgMapper.selectBatchIds(orgIds).stream()
+        Map<Long, SysOrg> orgMap = orgIds.isEmpty() ? Map.of() : orgRepository.findAllById(orgIds).stream()
                 .collect(Collectors.toMap(SysOrg::getId, Function.identity()));
 
-        List<UserManageVO> records = result.getRecords().stream().map(user -> {
+        List<UserManageVO> records = result.getContent().stream().map(user -> {
             List<Long> roleIds = roleIdsByUser.getOrDefault(user.getId(), List.of());
             List<SysRole> roles = roleIds.stream()
                     .map(roleMap::get)
@@ -110,14 +114,13 @@ public class UserServiceImpl implements UserService {
             vo.setRoleNames(roles.stream().map(SysRole::getRoleName).toList());
             return vo;
         }).toList();
-        return PageResult.of(result.getTotal(), records);
+        return PageResult.of(result.getTotalElements(), records);
     }
 
     @Override
     @Transactional
     public Long createUser(UserCreateRequest request) {
-        long count = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUsername, request.getUsername()));
+        long count = userRepository.countByUsername(request.getUsername());
         if (count > 0) {
             throw new BusinessException(400, "用户名已存在");
         }
@@ -131,7 +134,7 @@ public class UserServiceImpl implements UserService {
         user.setAvatar(normalize(request.getAvatar()));
         user.setOrgId(resolveOrgId(request.getOrgId()));
         user.setStatus(request.getStatus() == null ? 1 : request.getStatus());
-        userMapper.insert(user);
+        userRepository.save(user);
 
         replaceUserRoles(user.getId(), request.getRoleIds());
         return user.getId();
@@ -160,7 +163,7 @@ public class UserServiceImpl implements UserService {
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
         }
-        userMapper.updateById(user);
+        userRepository.save(user);
 
         if (request.getRoleIds() != null) {
             replaceUserRoles(id, request.getRoleIds());
@@ -172,8 +175,8 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         SysUser user = requireUser(id);
         ensureBuiltinAdminMutable(user, "admin 账号不允许删除");
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
-        userMapper.deleteById(id);
+        userRoleRepository.deleteByUserId(id);
+        userRepository.deleteById(id);
     }
 
     @Override
@@ -182,7 +185,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setFailedLoginCount(0);
         user.setLockedUntil(null);
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     @Override
@@ -194,7 +197,7 @@ public class UserServiceImpl implements UserService {
             user.setFailedLoginCount(0);
             user.setLockedUntil(null);
         }
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     @Override
@@ -203,15 +206,13 @@ public class UserServiceImpl implements UserService {
         if (currentUserId == null || !currentUserId.equals(userId)) {
             throw new BusinessException(403, "只能修改自己的密码");
         }
-        SysUser user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException(404, "用户不存在");
-        }
+        SysUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
         if (!matchesPassword(request.getOldPassword(), user.getPassword())) {
             throw new BusinessException(400, "旧密码错误");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     @Override
@@ -220,10 +221,8 @@ public class UserServiceImpl implements UserService {
         if (currentUserId == null || !currentUserId.equals(userId)) {
             throw new BusinessException(403, "只能修改自己的个人资料");
         }
-        SysUser user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException(404, "用户不存在");
-        }
+        SysUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
         if (request.getRealName() != null) {
             user.setRealName(request.getRealName());
         }
@@ -233,7 +232,7 @@ public class UserServiceImpl implements UserService {
         if (request.getAvatar() != null) {
             user.setAvatar(request.getAvatar());
         }
-        userMapper.updateById(user);
+        userRepository.save(user);
     }
 
     private boolean matchesPassword(String rawPassword, String storedPassword) {
@@ -243,11 +242,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private SysUser requireUser(Long id) {
-        SysUser user = userMapper.selectById(id);
-        if (user == null) {
-            throw new BusinessException(404, "用户不存在");
-        }
-        return user;
+        return userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
     }
 
     private void ensureBuiltinAdminMutable(SysUser user, String message) {
@@ -257,18 +253,17 @@ public class UserServiceImpl implements UserService {
     }
 
     private void replaceUserRoles(Long userId, List<Long> roleIds) {
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+        userRoleRepository.deleteByUserId(userId);
         List<Long> effectiveRoleIds = roleIds;
         if (effectiveRoleIds == null || effectiveRoleIds.isEmpty()) {
-            SysRole defaultRole = roleMapper.selectOne(
-                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleCode, "USER"));
+            SysRole defaultRole = roleRepository.findByRoleCode("USER").orElse(null);
             effectiveRoleIds = defaultRole == null ? List.of() : List.of(defaultRole.getId());
         }
         for (Long roleId : effectiveRoleIds.stream().distinct().toList()) {
             SysUserRole relation = new SysUserRole();
             relation.setUserId(userId);
             relation.setRoleId(roleId);
-            userRoleMapper.insert(relation);
+            userRoleRepository.save(relation);
         }
     }
 
@@ -276,8 +271,7 @@ public class UserServiceImpl implements UserService {
         if (orgId == null || orgId == 0L) {
             return null;
         }
-        SysOrg org = orgMapper.selectById(orgId);
-        if (org == null) {
+        if (!orgRepository.existsById(orgId)) {
             throw new BusinessException(400, "组织不存在");
         }
         return orgId;

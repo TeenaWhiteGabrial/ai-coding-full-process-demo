@@ -6,10 +6,9 @@ import com.aistudio.service.dto.request.RoleCreateRequest;
 import com.aistudio.service.dto.response.RoleMenuTreeVO;
 import com.aistudio.service.entity.SysRole;
 import com.aistudio.service.entity.SysUserRole;
-import com.aistudio.service.mapper.SysRoleMapper;
-import com.aistudio.service.mapper.SysUserRoleMapper;
+import com.aistudio.service.repository.SysRoleRepository;
+import com.aistudio.service.repository.SysUserRoleRepository;
 import com.aistudio.service.service.MenuService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -33,29 +32,29 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CommonRoleController {
 
-    private final SysRoleMapper roleMapper;
-    private final SysUserRoleMapper userRoleMapper;
+    private final SysRoleRepository roleRepository;
+    private final SysUserRoleRepository userRoleRepository;
     private final MenuService menuService;
 
     @Operation(summary = "Role list")
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','OP_ADMIN')")
     public Result<List<SysRole>> list() {
-        return Result.success(roleMapper.selectList(null));
+        return Result.success(roleRepository.findAll());
     }
 
     @Operation(summary = "Create role")
     @PostMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Result<Long> create(@jakarta.validation.Valid @RequestBody RoleCreateRequest request) {
-        long count = roleMapper.selectCount(new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleCode, request.getRoleCode()));
+        long count = roleRepository.countByRoleCode(request.getRoleCode());
         if (count > 0) {
             throw new BusinessException(400, "角色编码已存在");
         }
         SysRole role = new SysRole();
         role.setRoleCode(request.getRoleCode().trim());
         role.setRoleName(request.getRoleName().trim());
-        roleMapper.insert(role);
+        roleRepository.save(role);
         return Result.success(role.getId());
     }
 
@@ -81,8 +80,7 @@ public class CommonRoleController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Result<List<Long>> roleUsers(@PathVariable Long id) {
         ensureEditableRole(id);
-        List<Long> userIds = userRoleMapper.selectList(
-                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id))
+        List<Long> userIds = userRoleRepository.findByRoleId(id)
                 .stream()
                 .map(SysUserRole::getUserId)
                 .toList();
@@ -95,12 +93,12 @@ public class CommonRoleController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Result<Void> updateRoleUsers(@PathVariable Long id, @RequestBody List<Long> userIds) {
         ensureEditableRole(id);
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
+        userRoleRepository.deleteByRoleId(id);
         for (Long userId : Optional.ofNullable(userIds).orElse(List.of()).stream().distinct().toList()) {
             SysUserRole relation = new SysUserRole();
             relation.setRoleId(id);
             relation.setUserId(userId);
-            userRoleMapper.insert(relation);
+            userRoleRepository.save(relation);
         }
         return Result.success();
     }
@@ -111,20 +109,18 @@ public class CommonRoleController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Result<Void> delete(@PathVariable Long id) {
         ensureEditableRole(id);
-        long userCount = userRoleMapper.selectCount(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
+        long userCount = userRoleRepository.countByRoleId(id);
         if (userCount > 0) {
             throw new BusinessException(400, "该角色下仍有关联用户，不能删除");
         }
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, id));
-        roleMapper.deleteById(id);
+        userRoleRepository.deleteByRoleId(id);
+        roleRepository.deleteById(id);
         return Result.success();
     }
 
     private void ensureEditableRole(Long id) {
-        SysRole role = roleMapper.selectById(id);
-        if (role == null) {
-            throw new BusinessException(404, "角色不存在");
-        }
+        SysRole role = roleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "角色不存在"));
         if ("SUPER_ADMIN".equals(role.getRoleCode())) {
             throw new BusinessException(403, "超级管理员角色不允许修改");
         }

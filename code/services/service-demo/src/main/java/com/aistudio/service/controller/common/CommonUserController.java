@@ -7,7 +7,7 @@ import com.aistudio.service.dto.request.UserUpdateRequest;
 import com.aistudio.service.dto.response.PageResult;
 import com.aistudio.service.dto.response.UserManageVO;
 import com.aistudio.service.entity.SysRole;
-import com.aistudio.service.mapper.SysRoleMapper;
+import com.aistudio.service.repository.SysRoleRepository;
 import com.aistudio.service.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,7 +33,7 @@ import java.util.List;
 public class CommonUserController {
 
     private final UserService userService;
-    private final SysRoleMapper roleMapper;
+    private final SysRoleRepository roleRepository;
 
     @Operation(summary = "User list")
     @GetMapping("/list")
@@ -50,7 +50,7 @@ public class CommonUserController {
     @GetMapping("/roles")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','OP_ADMIN')")
     public Result<List<SysRole>> roles() {
-        return Result.success(roleMapper.selectList(null));
+        return Result.success(roleRepository.findAll());
     }
 
     @Operation(summary = "Create user")

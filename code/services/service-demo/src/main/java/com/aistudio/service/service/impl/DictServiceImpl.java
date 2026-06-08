@@ -5,9 +5,8 @@ import com.aistudio.service.dto.request.DictCreateRequest;
 import com.aistudio.service.dto.request.DictUpdateRequest;
 import com.aistudio.service.dto.response.DictTreeVO;
 import com.aistudio.service.entity.SysDict;
-import com.aistudio.service.mapper.SysDictMapper;
+import com.aistudio.service.repository.SysDictRepository;
 import com.aistudio.service.service.DictService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -21,17 +20,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DictServiceImpl implements DictService {
 
-    private final SysDictMapper dictMapper;
+    private final SysDictRepository dictRepository;
 
     @Override
     public List<DictTreeVO> getDictTree(String dictType) {
-        LambdaQueryWrapper<SysDict> wrapper = new LambdaQueryWrapper<SysDict>()
-                .orderByAsc(SysDict::getSort)
-                .orderByAsc(SysDict::getId);
-        if (StringUtils.hasText(dictType)) {
-            wrapper.eq(SysDict::getDictType, dictType.trim());
-        }
-        List<SysDict> dicts = dictMapper.selectList(wrapper);
+        List<SysDict> dicts = StringUtils.hasText(dictType)
+                ? dictRepository.findByDictTypeOrderBySortAscIdAsc(dictType.trim())
+                : dictRepository.findAllByOrderBySortAscIdAsc();
         List<DictTreeVO> items = dicts.stream().map(this::toVO).toList();
         return buildTree(items, 0L);
     }
@@ -47,7 +42,7 @@ public class DictServiceImpl implements DictService {
         ensureUnique(request.getDictType(), request.getDictValue(), null);
         SysDict dict = new SysDict();
         applyRequest(dict, request);
-        dictMapper.insert(dict);
+        dictRepository.save(dict);
         return dict.getId();
     }
 
@@ -58,17 +53,17 @@ public class DictServiceImpl implements DictService {
         ensureUnique(request.getDictType(), request.getDictValue(), id);
         applyRequest(dict, request);
         dict.setId(id);
-        dictMapper.updateById(dict);
+        dictRepository.save(dict);
     }
 
     @Override
     @Transactional
     public void deleteDict(Long id) {
-        long childCount = dictMapper.selectCount(new LambdaQueryWrapper<SysDict>().eq(SysDict::getParentId, id));
+        long childCount = dictRepository.countByParentId(id);
         if (childCount > 0) {
             throw new BusinessException(400, "请先删除子级字典项");
         }
-        dictMapper.deleteById(id);
+        dictRepository.deleteById(id);
     }
 
     private void applyRequest(SysDict dict, DictCreateRequest request) {
@@ -92,23 +87,17 @@ public class DictServiceImpl implements DictService {
     }
 
     private void ensureUnique(String dictType, String dictValue, Long excludeId) {
-        LambdaQueryWrapper<SysDict> wrapper = new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getDictType, dictType.trim())
-                .eq(SysDict::getDictValue, dictValue.trim());
-        if (excludeId != null) {
-            wrapper.ne(SysDict::getId, excludeId);
-        }
-        if (dictMapper.selectCount(wrapper) > 0) {
+        long count = excludeId == null
+                ? dictRepository.countByDictTypeAndDictValue(dictType.trim(), dictValue.trim())
+                : dictRepository.countByDictTypeAndDictValueAndIdNot(dictType.trim(), dictValue.trim(), excludeId);
+        if (count > 0) {
             throw new BusinessException(400, "同类型字典值已存在");
         }
     }
 
     private SysDict requireDict(Long id) {
-        SysDict dict = dictMapper.selectById(id);
-        if (dict == null) {
-            throw new BusinessException(404, "字典项不存在");
-        }
-        return dict;
+        return dictRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "字典项不存在"));
     }
 
     private DictTreeVO toVO(SysDict dict) {

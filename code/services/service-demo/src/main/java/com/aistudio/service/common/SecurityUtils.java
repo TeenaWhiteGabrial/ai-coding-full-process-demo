@@ -1,8 +1,7 @@
 package com.aistudio.service.common;
 
 import com.aistudio.service.entity.SysUser;
-import com.aistudio.service.mapper.SysUserMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.aistudio.service.repository.SysUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +13,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @RequiredArgsConstructor
 public class SecurityUtils {
 
-    private final SysUserMapper userMapper;
+    private final SysUserRepository userRepository;
 
     public Long getCurrentUserId() {
         ServletRequestAttributes attributes =
@@ -31,8 +30,8 @@ public class SecurityUtils {
             return null;
         }
 
-        SysUser user = userMapper.selectOne(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, authentication.getName()));
-        return user == null ? null : user.getId();
+        return userRepository.findByUsername(authentication.getName())
+                .map(SysUser::getId)
+                .orElse(null);
     }
 }

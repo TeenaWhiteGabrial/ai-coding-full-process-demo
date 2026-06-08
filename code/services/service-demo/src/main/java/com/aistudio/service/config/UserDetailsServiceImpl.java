@@ -2,9 +2,8 @@ package com.aistudio.service.config;
 
 import com.aistudio.service.entity.SysRole;
 import com.aistudio.service.entity.SysUser;
-import com.aistudio.service.mapper.SysRoleMapper;
-import com.aistudio.service.mapper.SysUserMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.aistudio.service.repository.SysRoleRepository;
+import com.aistudio.service.repository.SysUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -19,18 +18,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final SysUserMapper userMapper;
-    private final SysRoleMapper roleMapper;
+    private final SysUserRepository userRepository;
+    private final SysRoleRepository roleRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        SysUser user = userMapper.selectOne(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
-        if (user == null) {
-            throw new UsernameNotFoundException("user not found: " + username);
-        }
+        SysUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("user not found: " + username));
 
-        List<SimpleGrantedAuthority> authorities = roleMapper.selectByUserId(user.getId()).stream()
+        List<SimpleGrantedAuthority> authorities = roleRepository.findByUserId(user.getId()).stream()
                 .map(SysRole::getRoleCode)
                 .map(roleCode -> new SimpleGrantedAuthority("ROLE_" + roleCode))
                 .toList();

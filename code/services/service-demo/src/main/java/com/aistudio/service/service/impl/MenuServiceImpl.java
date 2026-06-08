@@ -6,8 +6,9 @@ import com.aistudio.service.dto.response.MenuTreeVO;
 import com.aistudio.service.dto.response.RoleMenuTreeVO;
 import com.aistudio.service.entity.SysMenu;
 import com.aistudio.service.entity.SysRoleMenu;
-import com.aistudio.service.mapper.SysMenuMapper;
-import com.aistudio.service.mapper.SysRoleMenuMapper;
+import com.aistudio.service.repository.SysMenuRepository;
+import com.aistudio.service.repository.SysRoleMenuRepository;
+import com.aistudio.service.repository.SysRoleRepository;
 import com.aistudio.service.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -28,17 +29,17 @@ public class MenuServiceImpl implements MenuService {
     private static final String APP_CODE_CONSOLE = "CONSOLE";
     private static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
 
-    private final SysMenuMapper menuMapper;
-    private final com.aistudio.service.mapper.SysRoleMapper roleMapper;
-    private final SysRoleMenuMapper roleMenuMapper;
+    private final SysMenuRepository menuRepository;
+    private final SysRoleRepository roleRepository;
+    private final SysRoleMenuRepository roleMenuRepository;
 
     @Override
     public List<MenuTreeVO> getMenuTree(Long userId) {
-        boolean isSuperAdmin = roleMapper.selectByUserId(userId).stream()
+        boolean isSuperAdmin = roleRepository.findByUserId(userId).stream()
                 .anyMatch(role -> ROLE_SUPER_ADMIN.equals(role.getRoleCode()));
         List<SysMenu> menus = isSuperAdmin
-                ? menuMapper.selectAllConsoleMenus()
-                : menuMapper.selectByUserId(userId);
+                ? menuRepository.findAllVisibleConsoleMenus()
+                : menuRepository.findConsoleMenusByUserId(userId);
         menus = menus.stream()
                 .filter(menu -> !"BUTTON".equalsIgnoreCase(menu.getMenuType()))
                 .toList();
@@ -53,14 +54,8 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     public List<RoleMenuTreeVO> getRoleMenuTree(Long roleId) {
-        List<SysMenu> allMenus = menuMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
-                        .eq(SysMenu::getAppCode, APP_CODE_CONSOLE)
-                        .orderByAsc(SysMenu::getSort)
-                        .orderByAsc(SysMenu::getId));
-        List<SysRoleMenu> roleMenus = roleMenuMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
-                        .eq(SysRoleMenu::getRoleId, roleId));
+        List<SysMenu> allMenus = menuRepository.findByAppCodeOrderBySortAscIdAsc(APP_CODE_CONSOLE);
+        List<SysRoleMenu> roleMenus = roleMenuRepository.findByRoleId(roleId);
         Set<Long> roleMenuIds = roleMenus.stream()
                 .map(SysRoleMenu::getMenuId)
                 .collect(Collectors.toSet());
@@ -77,31 +72,24 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Transactional
     public void updateRoleMenus(Long roleId, List<Long> menuIds) {
-        roleMenuMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
-                .eq(SysRoleMenu::getRoleId, roleId));
+        roleMenuRepository.deleteByRoleId(roleId);
         for (Long menuId : menuIds) {
             SysRoleMenu roleMenu = new SysRoleMenu();
             roleMenu.setRoleId(roleId);
             roleMenu.setMenuId(menuId);
-            roleMenuMapper.insert(roleMenu);
+            roleMenuRepository.save(roleMenu);
         }
     }
 
     @Override
     public List<SysMenu> listAllMenus() {
-        return menuMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
-                .eq(SysMenu::getAppCode, APP_CODE_CONSOLE)
-                .orderByAsc(SysMenu::getSort)
-                .orderByAsc(SysMenu::getId));
+        return menuRepository.findByAppCodeOrderBySortAscIdAsc(APP_CODE_CONSOLE);
     }
 
     @Override
     public SysMenu getMenuById(Long id) {
-        SysMenu menu = menuMapper.selectById(id);
-        if (menu == null) {
-            throw new BusinessException(404, "菜单不存在");
-        }
-        return menu;
+        return menuRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(404, "菜单不存在"));
     }
 
     @Override
@@ -114,7 +102,7 @@ public class MenuServiceImpl implements MenuService {
         menu.setSort(request.getSort() == null ? 0 : request.getSort());
         menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
-        menuMapper.insert(menu);
+        menuRepository.save(menu);
         return menu.getId();
     }
 
@@ -129,48 +117,44 @@ public class MenuServiceImpl implements MenuService {
         menu.setSort(request.getSort() == null ? 0 : request.getSort());
         menu.setHidden(request.getHidden() == null ? 0 : request.getHidden());
         menu.setAppCode(APP_CODE_CONSOLE);
-        menuMapper.updateById(menu);
+        menuRepository.save(menu);
     }
 
     @Override
     @Transactional
     public void deleteMenu(Long id) {
-        long childCount = menuMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysMenu>()
-                        .eq(SysMenu::getParentId, id));
+        long childCount = menuRepository.countByParentId(id);
         if (childCount > 0) {
             throw new BusinessException(400, "请先删除子菜单");
         }
-        List<Long> assignedRoleIds = roleMenuMapper.selectList(
-                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysRoleMenu>()
-                                .eq(SysRoleMenu::getMenuId, id))
+        List<Long> assignedRoleIds = roleMenuRepository.findByMenuId(id)
                 .stream()
                 .map(SysRoleMenu::getRoleId)
                 .distinct()
                 .toList();
         long roleCount = assignedRoleIds.isEmpty()
                 ? 0
-                : roleMapper.selectBatchIds(assignedRoleIds).stream()
+                : roleRepository.findAllById(assignedRoleIds).stream()
                         .filter(java.util.Objects::nonNull)
                         .filter(role -> !ROLE_SUPER_ADMIN.equals(role.getRoleCode()))
                         .count();
         if (roleCount > 0) {
             throw new BusinessException(400, "菜单已分配给角色，无法删除");
         }
-        menuMapper.deleteById(id);
+        menuRepository.deleteById(id);
     }
 
     @Override
     public Set<String> getPermissionCodes(Long userId) {
-        boolean isSuperAdmin = roleMapper.selectByUserId(userId).stream()
+        boolean isSuperAdmin = roleRepository.findByUserId(userId).stream()
                 .anyMatch(role -> ROLE_SUPER_ADMIN.equals(role.getRoleCode()));
         if (isSuperAdmin) {
-            return menuMapper.selectAllConsoleMenus().stream()
+            return menuRepository.findAllVisibleConsoleMenus().stream()
                     .map(SysMenu::getPermissionCode)
                     .filter(code -> code != null && !code.isBlank())
                     .collect(Collectors.toSet());
         }
-        return menuMapper.selectPermissionCodesByUserId(userId).stream().collect(Collectors.toSet());
+        return menuRepository.findPermissionCodesByUserId(userId).stream().collect(Collectors.toSet());
     }
 
     private List<MenuTreeVO> buildTree(List<MenuTreeVO> items, Long parentId) {
